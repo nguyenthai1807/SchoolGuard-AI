@@ -177,7 +177,8 @@ def _send_camera_sms(event, recipient=None):
     if not all((sid, token, recipient, sender)):
         return "not_configured"
     when = datetime.now().astimezone().strftime("%d/%m/%Y %H:%M:%S %Z")
-    response = requests.post(f"https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json", auth=(sid, token), data={"From": sender, "To": recipient, "Body": f"SchoolGuard: {event['object_type']} vào {event['zone_name']} lúc {when}."}, timeout=15)
+    offset = f" Mốc video: {event['media_offset_seconds']}s." if event.get("media_offset_seconds") is not None else ""
+    response = requests.post(f"https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json", auth=(sid, token), data={"From": sender, "To": recipient, "Body": f"SchoolGuard: {event['object_type']} vào {event['zone_name']} lúc {when}.{offset}"}, timeout=15)
     response.raise_for_status()
     return "sent"
 
@@ -524,7 +525,7 @@ async def analyze_uploaded_video(
 
     video_id = secrets.token_hex(12)
     input_path = UPLOAD_DIR / f".{video_id}_input{extension}"
-    output_path = UPLOAD_DIR / f"analysis_{video_id}.mp4"
+    output_path = UPLOAD_DIR / f"analysis_{video_id}.webm"
     size = 0
     try:
         with input_path.open("wb") as destination:
@@ -551,11 +552,27 @@ async def analyze_uploaded_video(
         for event in summary.get("events", []):
             try:
                 _save_detection_event(db, event, "video", Path(file.filename or "video").name, event["image_path"])
-                settings = _account_notification_settings(db, token)
-                recipient_email = settings.email if settings and settings.email else os.getenv("ADMIN_EMAIL")
-                event["notification_status"] = await run_in_threadpool(_send_event_email, event, event["image_path"], recipient_email)
             except Exception as error:
-                event["notification_status"] = f"failed: {error}"
+                event["notification_status"] = f"save_failed: {error}"
+                event.pop("image_path", None)
+                continue
+
+            settings = _account_notification_settings(db, token)
+            notify_channel = settings.channel if settings else os.getenv("CAMERA_NOTIFY_CHANNEL", "none").lower()
+            recipient_email = settings.email if settings and settings.email else os.getenv("ADMIN_EMAIL")
+            recipient_phone = settings.phone if settings and settings.phone else os.getenv("ADMIN_PHONE")
+            statuses = []
+            if notify_channel in {"email", "both"}:
+                try:
+                    statuses.append(await run_in_threadpool(_send_event_email, event, event["image_path"], recipient_email))
+                except Exception as error:
+                    statuses.append(f"email_failed: {error}")
+            if notify_channel in {"sms", "both"}:
+                try:
+                    statuses.append(await run_in_threadpool(_send_camera_sms, event, recipient_phone))
+                except Exception as error:
+                    statuses.append(f"sms_failed: {error}")
+            event["notification_status"] = ",".join(statuses) if statuses else "disabled"
             event.pop("image_path", None)
         video_results[video_id] = {"summary": summary, "output_path": output_path}
         return {
@@ -577,7 +594,7 @@ def get_annotated_video(video_id: str, _: str = Depends(require_token)):
     result = video_results.get(video_id)
     if result is None or not result["output_path"].is_file():
         raise HTTPException(status_code=404, detail="Không tìm thấy video đã phân tích; hãy chạy phân tích lại")
-    return FileResponse(result["output_path"], media_type="video/mp4", filename=f"schoolguard_{video_id}.mp4")
+    return FileResponse(result["output_path"], media_type="video/webm", filename=f"schoolguard_{video_id}.webm")
 
 
 @app.post("/api/live/detect")
@@ -586,10 +603,14 @@ async def detect_live_camera_frame(
     zones: str = Form("[]"),
     stream_id: str = Form("default"),
     source_name: str = Form("Camera trực tiếp"),
+    source_type: str = Form("camera"),
+    media_offset_seconds: Optional[float] = Form(None, ge=0),
     selected_classes: str = Form("[0,1,2,3,5,7]"),
     db: Session = Depends(get_db),
     token: str = Depends(require_token),
 ):
+    if source_type not in {"camera", "video"}:
+        raise HTTPException(status_code=422, detail="Nguồn nhận diện không hợp lệ")
     if file.content_type not in {"image/jpeg", "image/png", "image/webp"}:
         raise HTTPException(status_code=415, detail="Khung hình camera phải là ảnh JPEG, PNG hoặc WebP")
     frame_bytes = await file.read(3 * 1024 * 1024 + 1)
@@ -614,11 +635,12 @@ async def detect_live_camera_frame(
         recipient_email = settings.email if settings else os.getenv("ADMIN_EMAIL")
         recipient_phone = settings.phone if settings else os.getenv("ADMIN_PHONE")
         for event in new_events:
-            image_path = UPLOAD_DIR / f"event_camera_{secrets.token_hex(12)}.jpg"
+            event["media_offset_seconds"] = round(media_offset_seconds, 2) if source_type == "video" and media_offset_seconds is not None else None
+            image_path = UPLOAD_DIR / f"event_{source_type}_{secrets.token_hex(12)}.jpg"
             evidence = await run_in_threadpool(annotate_live_event_jpeg, frame_bytes, event, result.get("detections", []), selected_zones)
             image_path.write_bytes(evidence)
             try:
-                _save_detection_event(db, event, "camera", source_name[:200], image_path)
+                _save_detection_event(db, event, source_type, source_name[:200], image_path)
                 statuses = []
                 if notify_channel in {"email", "both"}:
                     statuses.append(await run_in_threadpool(_send_event_email, event, image_path, recipient_email))

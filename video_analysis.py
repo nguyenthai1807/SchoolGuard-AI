@@ -222,7 +222,7 @@ def analyze_video(input_path: str, output_path: str, zones=None) -> dict:
 
     output_path_obj = Path(output_path)
     writer = cv2.VideoWriter(
-        str(output_path_obj), cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height)
+        str(output_path_obj), cv2.VideoWriter_fourcc(*"VP80"), fps, (width, height)
     )
     if not writer.isOpened():
         capture.release()

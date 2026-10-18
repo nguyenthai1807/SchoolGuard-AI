@@ -63,8 +63,10 @@
         padding: 10px;
       }
       #video-summary li { margin: 6px 0; }
-      #annotated-video { display: block; width: 100%; max-height: 520px; margin-top: 12px; background: #111; }
-      #download-video { display: inline-block; margin-top: 10px; }
+      #annotated-video { width: 100%; max-height: 520px; margin-top: 12px; background: #111; }
+      #annotated-video[hidden], #annotated-video-heading[hidden] { display: none; }
+      #annotated-video-heading { margin: 18px 0 0; }
+      #download-video { display: inline-block; margin-top: 10px; font-size: .9rem; }
       .zone-controls { margin: 12px 0; padding: 12px; background: #f8fafc; border: 1px solid #dbe2ea; border-radius: 8px; }
       .class-options { display: flex; flex-wrap: wrap; gap: 10px 16px; margin: 8px 0; }
       .class-options label { white-space: nowrap; }
@@ -163,6 +165,7 @@
     <section class="video-test" id="video-test" hidden>
       <h2>Phân tích video</h2>
       <p>Nhận diện người, xe đạp, ô tô, xe máy, xe buýt và xe tải. Nhóm người dựa trên màu áo/vùng thân gần giống nhau.</p>
+        <p>Muốn thấy viền ngay khi phát: khoanh vùng rồi bấm Play ở video xem trước. Nút <strong>Phân tích video</strong> vẫn tạo thêm bản video đã đánh dấu đầy đủ sau khi xử lý xong.</p>
       <form id="video-form">
         <label for="video-file">Chọn video (MP4, MOV, AVI, MKV hoặc WebM; tối đa 300 MB và 3 phút)</label><br />
         <input id="video-file" name="file" type="file" accept="video/mp4,video/quicktime,video/x-msvideo,video/x-matroska,video/webm" required />
@@ -170,17 +173,18 @@
       </form>
       <div class="zone-controls">
         <strong>Vùng cảnh báo video</strong>
-        <p>Chọn loại đối tượng, bật chế độ khoanh vùng rồi kéo trên video. Sau 5 giây trong vùng sẽ tạo cảnh báo.</p>
+        <p>Chọn video, khoanh vùng rồi bấm Play: khung nhận diện chạy trực tiếp trên video. Đối tượng ở trong vùng đủ 5 giây sẽ lưu ảnh và tạo cảnh báo như camera.</p>
         <div class="class-options" id="video-class-options"></div>
         <button id="video-zone-mode" type="button" disabled>Bật chế độ khoanh vùng</button>
-        <div class="video-source-frame"><video id="video-source" controls muted></video><canvas id="video-zone-overlay" class="zone-canvas"></canvas></div>
+        <div class="video-source-frame"><video id="video-source" controls muted playsinline></video><canvas id="video-zone-overlay" class="zone-canvas"></canvas><canvas id="video-detection-overlay" class="zone-canvas"></canvas></div>
         <div class="zone-list" id="video-zone-list">Chưa có vùng. Tải video lên để xem trước.</div>
         <button id="clear-video-zones" type="button">Xóa vùng video</button>
       </div>
       <p id="video-message" role="status"></p>
       <div id="video-summary"></div>
-      <video id="annotated-video" controls hidden></video>
-      <a id="download-video" hidden>Tải video đã đánh dấu</a>
+      <h3 id="annotated-video-heading" hidden>Video đã đánh dấu — xem trực tiếp</h3>
+      <video id="annotated-video" controls playsinline hidden></video>
+      <a id="download-video" hidden>Tải bản sao video (không bắt buộc)</a>
     </section>
     <section class="live-camera" id="live-camera-section" hidden>
       <h2>Xem camera trực tiếp</h2>
@@ -301,11 +305,24 @@
       }
       const videoEditor = setupZoneEditor({ video: document.getElementById("video-source"), canvas: document.getElementById("video-zone-overlay"), list: document.getElementById("video-zone-list"), optionsId: "video-class-options", modeButtonId: "video-zone-mode", zones: videoZones });
       const cameraEditor = setupZoneEditor({ video: document.getElementById("live-camera-preview"), canvas: document.getElementById("camera-zone-overlay"), list: document.getElementById("camera-zone-list"), optionsId: "camera-class-options", modeButtonId: "camera-zone-mode", zones: cameraZones });
+      const uploadedVideo = document.getElementById("video-source");
+      const videoDetectionCanvas = document.getElementById("video-detection-overlay");
+      const videoDetectionContext = videoDetectionCanvas.getContext("2d");
+      const videoCaptureCanvas = document.createElement("canvas");
+      const videoLiveAlerts = new Map();
+      let videoDetectionTimer = null;
+      let videoDetectionBusy = false;
+      let videoStreamId = null;
       document.getElementById("video-file").addEventListener("change", (event) => {
         const file = event.target.files[0];
         const player = document.getElementById("video-source");
         if (player.dataset.objectUrl) URL.revokeObjectURL(player.dataset.objectUrl);
         videoZones.splice(0); videoEditor.redraw();
+        if (videoDetectionTimer) clearInterval(videoDetectionTimer);
+        videoDetectionTimer = null;
+        videoStreamId = file ? (crypto.randomUUID ? crypto.randomUUID() : `video-${Date.now()}`) : null;
+        videoLiveAlerts.clear();
+        videoDetectionContext.clearRect(0, 0, videoDetectionCanvas.width, videoDetectionCanvas.height);
         if (file) { player.dataset.objectUrl = URL.createObjectURL(file); player.src = player.dataset.objectUrl; videoEditor.setAvailable(true); }
         else { player.removeAttribute("src"); player.load(); videoEditor.setAvailable(false); }
       });
@@ -491,11 +508,13 @@
         const message = document.getElementById("video-message");
         const summary = document.getElementById("video-summary");
         const player = document.getElementById("annotated-video");
+        const playerHeading = document.getElementById("annotated-video-heading");
         const download = document.getElementById("download-video");
         const oldVideoUrl = player.dataset.objectUrl;
         if (oldVideoUrl) URL.revokeObjectURL(oldVideoUrl);
         download.hidden = true;
         player.hidden = true;
+        playerHeading.hidden = true;
         summary.replaceChildren();
         message.textContent = "Đang phân tích video; thời gian xử lý tùy độ dài video và cấu hình máy…";
         button.disabled = true;
@@ -551,15 +570,96 @@
           player.src = objectUrl;
           player.dataset.objectUrl = objectUrl;
           download.href = objectUrl;
-          download.download = `schoolguard_${result.video_id}.mp4`;
+          download.download = `schoolguard_${result.video_id}.webm`;
           download.hidden = false;
+          playerHeading.hidden = false;
           player.hidden = false;
-          message.textContent = "Phân tích xong. ID là mã theo dõi trong video; nhóm được tạo theo độ giống màu áo, không phải nhận diện danh tính.";
+          message.textContent = `Phân tích xong. Video có thể xem trực tiếp bên dưới; ${result.events?.length || 0} sự kiện đã được lưu vào nhật ký vùng cảnh báo. Thông báo dùng kênh mày đã chọn trong phần thông tin nhận cảnh báo. ID là mã theo dõi, nhóm trang phục dựa trên độ giống màu áo.`;
         } catch (error) {
           message.textContent = error.message || "Phân tích video thất bại.";
         } finally {
           button.disabled = false;
         }
+      });
+      async function analyzeUploadedVideoFrame() {
+        if (!accessToken || !videoStreamId || uploadedVideo.paused || videoDetectionBusy || uploadedVideo.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
+        videoDetectionBusy = true;
+        const streamAtCapture = videoStreamId;
+        try {
+          const scale = Math.min(1, 640 / uploadedVideo.videoWidth);
+          videoCaptureCanvas.width = Math.max(1, Math.round(uploadedVideo.videoWidth * scale));
+          videoCaptureCanvas.height = Math.max(1, Math.round(uploadedVideo.videoHeight * scale));
+          videoCaptureCanvas.getContext("2d").drawImage(uploadedVideo, 0, 0, videoCaptureCanvas.width, videoCaptureCanvas.height);
+          const frameBlob = await new Promise((resolve) => videoCaptureCanvas.toBlob(resolve, "image/jpeg", 0.72));
+          if (!frameBlob) throw new Error("Không lấy được khung hình từ video.");
+
+          const body = new FormData();
+          body.append("file", frameBlob, "video-frame.jpg");
+          body.append("stream_id", videoStreamId);
+          body.append("source_name", document.getElementById("video-file").files[0]?.name || "Video tải lên");
+          body.append("source_type", "video");
+          body.append("media_offset_seconds", String(uploadedVideo.currentTime));
+          body.append("zones", JSON.stringify(videoZones));
+          body.append("selected_classes", JSON.stringify(videoEditor.selectedClasses()));
+          const response = await fetch(`${API_BASE}/api/live/detect`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body });
+          const result = await response.json();
+          if (response.status === 401) throw new Error("Phiên đăng nhập hết hạn. Hãy đăng nhập lại.");
+          if (!response.ok) throw new Error(result.detail || `Backend trả về HTTP ${response.status}`);
+          if (streamAtCapture !== videoStreamId) return;
+
+          videoDetectionCanvas.width = result.width;
+          videoDetectionCanvas.height = result.height;
+          videoDetectionContext.clearRect(0, 0, result.width, result.height);
+          videoDetectionContext.lineWidth = Math.max(2, result.width / 320);
+          videoDetectionContext.font = `600 ${Math.max(12, result.width / 42)}px Segoe UI, sans-serif`;
+          const now = Date.now();
+          for (const item of result.events || []) {
+            videoLiveAlerts.set(item.track_id, { zone_id: item.zone_id, until: now + 5000 });
+            videoEditor.setAlerted(item.zone_id);
+            document.getElementById("video-message").textContent = `Cảnh báo: ${item.object_type} vào ${item.zone_name} tại ${Number(uploadedVideo.currentTime).toFixed(1)}s. Ảnh đã lưu; thông báo: ${item.notification_status}.`;
+            fetchDetectionEvents();
+          }
+          for (const detection of result.detections) {
+            const [x1, y1, x2, y2] = detection.box;
+            const alert = videoLiveAlerts.get(detection.track_id);
+            const isAlerted = alert && alert.until > now;
+            if (alert && !isAlerted) videoLiveAlerts.delete(detection.track_id);
+            const color = isAlerted ? "#dc2626" : detection.color;
+            const label = `${detection.label} ID:${detection.track_id ?? "—"} ${Math.round(detection.confidence * 100)}%`;
+            videoDetectionContext.strokeStyle = color;
+            videoDetectionContext.fillStyle = color;
+            videoDetectionContext.strokeRect(x1, y1, x2 - x1, y2 - y1);
+            const labelY = Math.max(18, y1);
+            const labelWidth = videoDetectionContext.measureText(label).width + 12;
+            videoDetectionContext.fillRect(x1, labelY - 18, labelWidth, 22);
+            videoDetectionContext.fillStyle = "#fff";
+            videoDetectionContext.fillText(label, x1 + 6, labelY - 2);
+          }
+          if (!result.events?.length) {
+            document.getElementById("video-message").textContent = result.detections.length
+              ? `Đang nhận diện trực tiếp: ${result.detections.length} đối tượng · ${uploadedVideo.currentTime.toFixed(1)}s`
+              : `Video đang phát; chưa phát hiện người hoặc phương tiện · ${uploadedVideo.currentTime.toFixed(1)}s`;
+          }
+        } catch (error) {
+          document.getElementById("video-message").textContent = `Lỗi nhận diện video: ${error.message}`;
+        } finally {
+          videoDetectionBusy = false;
+        }
+      }
+      uploadedVideo.addEventListener("play", () => {
+        videoStreamId = crypto.randomUUID ? crypto.randomUUID() : `video-${Date.now()}`;
+        if (videoDetectionTimer) clearInterval(videoDetectionTimer);
+        videoDetectionTimer = setInterval(analyzeUploadedVideoFrame, 850);
+        analyzeUploadedVideoFrame();
+      });
+      uploadedVideo.addEventListener("pause", () => {
+        if (videoDetectionTimer) clearInterval(videoDetectionTimer);
+        videoDetectionTimer = null;
+      });
+      uploadedVideo.addEventListener("ended", () => {
+        if (videoDetectionTimer) clearInterval(videoDetectionTimer);
+        videoDetectionTimer = null;
+        videoStreamId = null;
       });
       let cameraStream = null;
       const cameraPreview = document.getElementById("live-camera-preview");
