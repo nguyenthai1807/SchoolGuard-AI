@@ -1,0 +1,713 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <title>SchoolGuard AI - Dashboard</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: #f0f2f5;
+        padding: 20px;
+      }
+      .header {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 20px;
+      }
+      .card {
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border-top: 4px solid #e74c3c;
+      }
+      .card img {
+        width: 100%;
+        height: 220px;
+        object-fit: cover;
+      }
+      .info {
+        padding: 15px;
+      }
+      .badge {
+        background: #e74c3c;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-weight: bold;
+        font-size: 12px;
+      }
+      .login {
+        max-width: 360px;
+        margin: 0 auto 24px;
+        padding: 16px;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      .video-test {
+        max-width: 900px;
+        margin: 0 auto 24px;
+        padding: 16px;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      .video-test button,
+      .video-test input[type="file"] {
+        margin: 8px 8px 8px 0;
+        padding: 10px;
+      }
+      #video-summary li { margin: 6px 0; }
+      #annotated-video { display: block; width: 100%; max-height: 520px; margin-top: 12px; background: #111; }
+      #download-video { display: inline-block; margin-top: 10px; }
+      .zone-controls { margin: 12px 0; padding: 12px; background: #f8fafc; border: 1px solid #dbe2ea; border-radius: 8px; }
+      .class-options { display: flex; flex-wrap: wrap; gap: 10px 16px; margin: 8px 0; }
+      .class-options label { white-space: nowrap; }
+      .video-source-frame { position: relative; width: 100%; margin-top: 12px; background: #111; }
+      #video-source { display: block; width: 100%; max-height: 520px; }
+      .zone-canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; pointer-events: none; }
+      .zone-canvas.drawing { pointer-events: auto; cursor: crosshair; }
+      .zone-list { font-size: 14px; color: #334155; }
+      .account-settings { max-width: 900px; margin: 0 auto 24px; padding: 16px; background: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,.1); }
+      .account-settings input, .account-settings select { padding: 9px; margin: 6px 12px 6px 0; }
+      .events-panel { max-width: 1200px; margin: 0 auto 24px; padding: 16px; background: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,.1); }
+      .events-panel input, .events-panel button { padding: 9px; }
+      .event-card { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,.1); border-top: 4px solid #dc2626; }
+      .event-card img { width: 100%; height: 220px; object-fit: cover; background: #111; }
+      .event-card-info { padding: 12px 15px; }
+      .event-card-info button { margin-top: 10px; padding: 8px 12px; border: 0; border-radius: 6px; background: #dc2626; color: white; font-weight: 600; cursor: pointer; }
+      .event-card-info button:hover { background: #b91c1c; }
+      .event-card-info button:disabled { opacity: .6; cursor: wait; }
+      .live-camera {
+        max-width: 900px;
+        margin: 0 auto 24px;
+        padding: 16px;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      #live-camera-preview {
+        display: block;
+        width: 100%;
+        max-height: 520px;
+        margin-top: 12px;
+        background: #111;
+      }
+      .camera-frame { position: relative; width: 100%; margin-top: 12px; }
+      .camera-frame #live-camera-preview { margin-top: 0; }
+      #live-camera-overlay {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+      }
+      .detection-legend { display: flex; flex-wrap: wrap; gap: 12px; }
+      .detection-legend span { display: inline-flex; align-items: center; gap: 5px; }
+      .detection-legend i { width: 14px; height: 14px; border-radius: 3px; }
+      .login input,
+      .login button {
+        box-sizing: border-box;
+        width: 100%;
+        margin-top: 10px;
+        padding: 10px;
+      }
+      .error { color: #b42318; }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>🚨 Hệ thống Cảnh báo SchoolGuard AI</h1>
+      <p>
+        Trạng thái:
+        <span style="color: green; font-weight: bold"
+          >Đang kết nối Backend...</span
+        >
+      </p>
+    </div>
+    <form class="login" id="login-form">
+      <h2>Đăng nhập</h2>
+      <label for="username">Tài khoản</label>
+      <input id="username" name="username" autocomplete="username" required />
+      <label for="password">Mật khẩu</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required />
+      <button type="submit">Đăng nhập</button>
+      <p class="error" id="login-error" role="alert"></p>
+    </form>
+    <section class="account-settings" id="account-settings" hidden>
+      <h2>Thông tin nhận cảnh báo</h2>
+      <p>Lưu email/số điện thoại cho tài khoản đang đăng nhập. Chọn kênh camera; video sẽ gửi ảnh qua email nếu đã điền email.</p>
+      <form id="notification-settings-form">
+        <label for="notify-email">Email/Gmail</label>
+        <input id="notify-email" type="email" maxlength="320" placeholder="admin@example.com" />
+        <label for="notify-phone">Số điện thoại</label>
+        <input id="notify-phone" type="tel" maxlength="40" placeholder="+84901234567" />
+        <label for="notify-channel">Cảnh báo camera</label>
+        <select id="notify-channel">
+          <option value="none">Tắt</option>
+          <option value="email">Email</option>
+          <option value="sms">SMS</option>
+          <option value="both">Email và SMS</option>
+        </select>
+        <button type="submit">Lưu thông tin</button>
+        <span id="notification-settings-status" role="status"></span>
+      </form>
+      <p id="notification-provider-status" role="status"></p>
+      <p>Email cần cấu hình SMTP/Gmail App Password ở backend; SMS cần cấu hình nhà cung cấp Twilio.</p>
+    </section>
+    <section class="video-test" id="video-test" hidden>
+      <h2>Phân tích video</h2>
+      <p>Nhận diện người, xe đạp, ô tô, xe máy, xe buýt và xe tải. Nhóm người dựa trên màu áo/vùng thân gần giống nhau.</p>
+      <form id="video-form">
+        <label for="video-file">Chọn video (MP4, MOV, AVI, MKV hoặc WebM; tối đa 300 MB và 3 phút)</label><br />
+        <input id="video-file" name="file" type="file" accept="video/mp4,video/quicktime,video/x-msvideo,video/x-matroska,video/webm" required />
+        <button id="analyze-video-button" type="submit">Phân tích video</button>
+      </form>
+      <div class="zone-controls">
+        <strong>Vùng cảnh báo video</strong>
+        <p>Chọn loại đối tượng, bật chế độ khoanh vùng rồi kéo trên video. Sau 5 giây trong vùng sẽ tạo cảnh báo.</p>
+        <div class="class-options" id="video-class-options"></div>
+        <button id="video-zone-mode" type="button" disabled>Bật chế độ khoanh vùng</button>
+        <div class="video-source-frame"><video id="video-source" controls muted></video><canvas id="video-zone-overlay" class="zone-canvas"></canvas></div>
+        <div class="zone-list" id="video-zone-list">Chưa có vùng. Tải video lên để xem trước.</div>
+        <button id="clear-video-zones" type="button">Xóa vùng video</button>
+      </div>
+      <p id="video-message" role="status"></p>
+      <div id="video-summary"></div>
+      <video id="annotated-video" controls hidden></video>
+      <a id="download-video" hidden>Tải video đã đánh dấu</a>
+    </section>
+    <section class="live-camera" id="live-camera-section" hidden>
+      <h2>Xem camera trực tiếp</h2>
+      <p>AI kiểm tra khung hình định kỳ và tô màu viền theo loại đối tượng. Người mặc đồ gần giống nhau được nhóm trong video tải lên ở mục Phân tích video.</p>
+      <p>Khung hình mẫu gửi đến backend trên máy này sẽ không được lưu; ảnh chỉ được lưu khi đối tượng ở trong vùng đủ 5 giây.</p>
+      <div class="detection-legend" aria-label="Màu khung nhận diện">
+        <span><i style="background:#2563EB"></i>Người</span>
+        <span><i style="background:#06B6D4"></i>Xe đạp</span>
+        <span><i style="background:#DC2626"></i>Ô tô</span>
+        <span><i style="background:#EA580C"></i>Xe máy</span>
+        <span><i style="background:#9333EA"></i>Xe buýt</span>
+        <span><i style="background:#CA8A04"></i>Xe tải</span>
+      </div>
+      <button id="start-camera" type="button">Bật camera</button>
+      <button id="stop-camera" type="button" disabled>Tắt camera</button>
+      <p id="camera-message" role="status">Camera chưa bật.</p>
+      <div class="zone-controls">
+        <strong>Vùng cảnh báo camera</strong>
+        <p>Chọn loại đối tượng, bật chế độ khoanh vùng rồi kéo trên hình camera. Giữ trong vùng 5 giây sẽ báo đỏ và tạo cảnh báo.</p>
+        <div class="class-options" id="camera-class-options"></div>
+        <button id="camera-zone-mode" type="button" disabled>Bật chế độ khoanh vùng</button>
+        <div class="zone-list" id="camera-zone-list">Chưa có vùng.</div>
+        <button id="clear-camera-zones" type="button">Xóa vùng camera</button>
+      </div>
+      <div class="camera-frame">
+        <video id="live-camera-preview" autoplay playsinline muted></video>
+        <canvas id="live-camera-overlay"></canvas>
+        <canvas id="camera-zone-overlay" class="zone-canvas"></canvas>
+      </div>
+    </section>
+    <section class="events-panel" id="event-history" hidden>
+      <h2>Nhật ký sự kiện vùng cảnh báo</h2>
+      <p>Ảnh và thông tin tự lưu khi đối tượng ở trong vùng đủ 5 giây. Admin có thể tìm theo vị trí, loại vật thể, camera/video hoặc ID.</p>
+      <input id="event-search" type="search" placeholder="Tìm sự kiện…" aria-label="Tìm sự kiện" />
+      <button id="event-search-button" type="button">Tìm</button>
+      <button id="event-refresh-button" type="button">Tải lại</button>
+      <p id="event-history-message" role="status"></p>
+      <div class="grid" id="event-history-container"></div>
+    </section>
+    <div class="grid" id="alert-container">
+      <!-- Dữ liệu sẽ tự động chèn vào đây -->
+    </div>
+
+    <script>
+      const API_BASE = "http://127.0.0.1:8000";
+      let accessToken = null;
+      const CLASS_CHOICES = [[0, "Người"], [1, "Xe đạp"], [2, "Ô tô"], [3, "Xe máy"], [5, "Xe buýt"], [7, "Xe tải"]];
+      const videoZones = [];
+      const cameraZones = [];
+      function setupZoneEditor({ video, canvas, list, optionsId, modeButtonId, zones }) {
+        const options = document.getElementById(optionsId);
+        const modeButton = document.getElementById(modeButtonId);
+        let drawingEnabled = false;
+        const alertedUntil = new Map();
+        for (const [id, label] of CLASS_CHOICES) {
+          const item = document.createElement("label");
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox"; checkbox.value = id; checkbox.checked = true;
+          item.append(checkbox, document.createTextNode(` ${label}`)); options.append(item);
+        }
+        const context = canvas.getContext("2d");
+        const selectedClasses = () => [...options.querySelectorAll("input:checked")].map((input) => Number(input.value));
+        const redraw = () => {
+          context.clearRect(0, 0, canvas.width, canvas.height);
+          zones.forEach((zone, index) => {
+            const x = zone.x * canvas.width, y = zone.y * canvas.height, w = zone.width * canvas.width, h = zone.height * canvas.height;
+            const isAlerted = (alertedUntil.get(zone.id) || 0) > Date.now();
+            context.fillStyle = isAlerted ? "rgba(220,38,38,.2)" : "rgba(16,185,129,.12)"; context.fillRect(x, y, w, h);
+            context.strokeStyle = isAlerted ? "#dc2626" : "#10b981"; context.lineWidth = Math.max(isAlerted ? 4 : 2, canvas.width / 500); context.strokeRect(x, y, w, h);
+            context.font = `600 ${Math.max(13, canvas.width / 55)}px Segoe UI`; context.fillStyle = isAlerted ? "#b91c1c" : "#047857"; context.fillText(zone.name || `Vùng ${index + 1}`, x + 4, y + 18);
+          });
+          list.textContent = zones.length ? zones.map((zone) => `${zone.name}: ${zone.classes.map((id) => CLASS_CHOICES.find((choice) => choice[0] === id)?.[1]).join(", ")}`).join(" · ") : "Chưa có vùng.";
+        };
+        const fitCanvas = () => {
+          if (!video.videoWidth || !video.videoHeight) return;
+          canvas.width = video.videoWidth; canvas.height = video.videoHeight; redraw();
+        };
+        const setAvailable = (available) => {
+          modeButton.disabled = !available;
+          if (!available) {
+            drawingEnabled = false;
+            canvas.classList.remove("drawing");
+            modeButton.textContent = "Bật chế độ khoanh vùng";
+          }
+        };
+        const setAlerted = (zoneId) => {
+          const until = Date.now() + 5000;
+          alertedUntil.set(zoneId, until);
+          redraw();
+          window.setTimeout(() => { if (alertedUntil.get(zoneId) === until) { alertedUntil.delete(zoneId); redraw(); } }, 5100);
+        };
+        const clearAlerts = () => { alertedUntil.clear(); redraw(); };
+        modeButton.addEventListener("click", () => {
+          drawingEnabled = !drawingEnabled;
+          canvas.classList.toggle("drawing", drawingEnabled);
+          modeButton.textContent = drawingEnabled ? "Đang khoanh vùng — kéo trên hình" : "Bật chế độ khoanh vùng";
+        });
+        video.addEventListener("loadedmetadata", () => { fitCanvas(); setAvailable(true); });
+        video.addEventListener("emptied", () => setAvailable(false));
+        video.addEventListener("resize", fitCanvas);
+        let start = null;
+        canvas.addEventListener("pointerdown", (event) => {
+          if (!drawingEnabled || !video.videoWidth || !selectedClasses().length) return;
+          const rect = canvas.getBoundingClientRect();
+          start = { x: (event.clientX - rect.left) / rect.width, y: (event.clientY - rect.top) / rect.height };
+          canvas.setPointerCapture(event.pointerId);
+        });
+        canvas.addEventListener("pointerup", (event) => {
+          if (!start) return;
+          const rect = canvas.getBoundingClientRect();
+          const end = { x: (event.clientX - rect.left) / rect.width, y: (event.clientY - rect.top) / rect.height };
+          const x = Math.max(0, Math.min(start.x, end.x)), y = Math.max(0, Math.min(start.y, end.y));
+          const width = Math.min(1 - x, Math.abs(end.x - start.x)), height = Math.min(1 - y, Math.abs(end.y - start.y));
+          if (width > .01 && height > .01) zones.push({ id: `${optionsId}-${Date.now()}`, name: `Vùng ${zones.length + 1}`, x, y, width, height, classes: selectedClasses() });
+          start = null; redraw();
+        });
+        return { redraw, selectedClasses, setAvailable, setAlerted, clearAlerts };
+      }
+      const videoEditor = setupZoneEditor({ video: document.getElementById("video-source"), canvas: document.getElementById("video-zone-overlay"), list: document.getElementById("video-zone-list"), optionsId: "video-class-options", modeButtonId: "video-zone-mode", zones: videoZones });
+      const cameraEditor = setupZoneEditor({ video: document.getElementById("live-camera-preview"), canvas: document.getElementById("camera-zone-overlay"), list: document.getElementById("camera-zone-list"), optionsId: "camera-class-options", modeButtonId: "camera-zone-mode", zones: cameraZones });
+      document.getElementById("video-file").addEventListener("change", (event) => {
+        const file = event.target.files[0];
+        const player = document.getElementById("video-source");
+        if (player.dataset.objectUrl) URL.revokeObjectURL(player.dataset.objectUrl);
+        videoZones.splice(0); videoEditor.redraw();
+        if (file) { player.dataset.objectUrl = URL.createObjectURL(file); player.src = player.dataset.objectUrl; videoEditor.setAvailable(true); }
+        else { player.removeAttribute("src"); player.load(); videoEditor.setAvailable(false); }
+      });
+      document.getElementById("clear-video-zones").addEventListener("click", () => { videoZones.splice(0); videoEditor.redraw(); });
+      document.getElementById("clear-camera-zones").addEventListener("click", () => { cameraZones.splice(0); cameraEditor.clearAlerts(); });
+
+      document.getElementById("login-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const loginForm = event.currentTarget;
+        const form = new FormData(loginForm);
+        const body = new URLSearchParams(form);
+        const error = document.getElementById("login-error");
+        error.textContent = "";
+        try {
+          const response = await fetch(`${API_BASE}/token`, { method: "POST", body });
+          if (!response.ok) throw new Error("Sai tài khoản hoặc mật khẩu");
+          accessToken = (await response.json()).access_token;
+          loginForm.hidden = true;
+          document.getElementById("account-settings").hidden = false;
+          document.getElementById("video-test").hidden = false;
+          document.getElementById("live-camera-section").hidden = false;
+          document.getElementById("event-history").hidden = false;
+          loadNotificationSettings();
+          fetchAlerts();
+          fetchDetectionEvents();
+        } catch (err) {
+          error.textContent = err.message || "Không kết nối được Backend";
+        }
+      });
+
+      async function loadNotificationSettings() {
+        const status = document.getElementById("notification-settings-status");
+        try {
+          const response = await fetch(`${API_BASE}/api/account/notifications`, { headers: { Authorization: `Bearer ${accessToken}` } });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.detail || "Không tải được thông tin nhận cảnh báo.");
+          document.getElementById("notify-email").value = data.email || "";
+          document.getElementById("notify-phone").value = data.phone || "";
+          document.getElementById("notify-channel").value = data.channel || "none";
+          await loadNotificationProviderStatus();
+        } catch (error) { status.textContent = error.message; }
+      }
+
+      async function loadNotificationProviderStatus() {
+        const panel = document.getElementById("notification-provider-status");
+        const response = await fetch(`${API_BASE}/api/account/notifications/status`, { headers: { Authorization: `Bearer ${accessToken}` } });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || "Không kiểm tra được cấu hình gửi tin.");
+        const emailMessage = data.email_ready ? "Email sẵn sàng" : `Email chưa sẵn sàng (${data.email_recipient_set ? "thiếu cấu hình SMTP" : "chưa nhập địa chỉ nhận"})`;
+        const smsMessage = data.sms_ready ? "SMS sẵn sàng" : `SMS chưa sẵn sàng (${data.phone_recipient_set ? "thiếu cấu hình Twilio" : "chưa nhập số nhận"})`;
+        panel.textContent = `${emailMessage}. ${smsMessage}.`;
+        panel.style.color = data.email_ready || data.sms_ready ? "#166534" : "#b42318";
+      }
+
+      document.getElementById("notification-settings-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const status = document.getElementById("notification-settings-status");
+        status.textContent = "Đang lưu…";
+        try {
+          const response = await fetch(`${API_BASE}/api/account/notifications`, {
+            method: "PUT",
+            headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ email: document.getElementById("notify-email").value, phone: document.getElementById("notify-phone").value, channel: document.getElementById("notify-channel").value }),
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.detail || "Không lưu được thông tin.");
+          status.textContent = "Đã lưu cho tài khoản này.";
+          await loadNotificationProviderStatus();
+        } catch (error) { status.textContent = error.message; }
+      });
+
+      async function fetchAlerts() {
+        if (!accessToken) return;
+        try {
+          const response = await fetch(`${API_BASE}/api/alerts`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          if (response.status === 401) {
+            accessToken = null;
+            document.getElementById("login-form").hidden = false;
+            document.getElementById("account-settings").hidden = true;
+            document.getElementById("video-test").hidden = true;
+            document.getElementById("live-camera-section").hidden = true;
+            document.getElementById("event-history").hidden = true;
+            stopCamera();
+            document.getElementById("login-error").textContent = "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
+            return;
+          }
+          if (!response.ok) throw new Error(`Backend trả về HTTP ${response.status}`);
+          const alerts = await response.json();
+          const container = document.getElementById("alert-container");
+          container.querySelectorAll("img[data-object-url]").forEach((image) => URL.revokeObjectURL(image.src));
+          container.innerHTML = "";
+
+          await Promise.all(alerts.map(async (alert) => {
+            const card = document.createElement("article");
+            card.className = "card";
+            const image = document.createElement("img");
+            image.alt = "Ảnh cảnh báo";
+            const imageResponse = await fetch(new URL(alert.image_url, API_BASE), {
+              headers: { Authorization: `Bearer ${accessToken}` },
+            });
+            if (imageResponse.ok) {
+              image.src = URL.createObjectURL(await imageResponse.blob());
+              image.dataset.objectUrl = "true";
+            }
+            const info = document.createElement("div");
+            info.className = "info";
+            const heading = document.createElement("h3");
+            heading.style.marginTop = "0";
+            heading.textContent = `Xâm nhập: ${alert.zone_name}`;
+            const camera = document.createElement("p");
+            camera.textContent = `📷 Camera: ${alert.camera_id}`;
+            const timestamp = document.createElement("p");
+            timestamp.textContent = `⏱ Thời gian: ${new Date(alert.timestamp).toLocaleString("vi-VN")}`;
+            const badge = document.createElement("span");
+            badge.className = "badge";
+            badge.textContent = alert.status;
+            info.append(heading, camera, timestamp, badge);
+            card.append(image, info);
+            container.append(card);
+          }));
+        } catch (error) {
+          console.error("Không tải được danh sách cảnh báo:", error);
+        }
+      }
+
+      let detectionEventsLoading = false;
+      async function fetchDetectionEvents() {
+        if (!accessToken || detectionEventsLoading) return;
+        detectionEventsLoading = true;
+        const message = document.getElementById("event-history-message");
+        const container = document.getElementById("event-history-container");
+        const params = new URLSearchParams({ limit: "30" });
+        const search = document.getElementById("event-search").value.trim();
+        if (search) params.set("q", search);
+        try {
+          const response = await fetch(`${API_BASE}/api/events?${params}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+          const events = await response.json();
+          if (response.status === 401) throw new Error("Phiên đăng nhập hết hạn. Hãy đăng nhập lại.");
+          if (!response.ok) throw new Error(events.detail || `Backend trả về HTTP ${response.status}`);
+          container.querySelectorAll("img[data-object-url]").forEach((image) => URL.revokeObjectURL(image.src));
+          container.replaceChildren();
+          if (!events.length) { message.textContent = search ? "Không tìm thấy sự kiện phù hợp." : "Chưa có sự kiện vùng nào được lưu."; return; }
+          message.textContent = `${events.length} sự kiện gần đây (tối đa 30).`;
+          await Promise.all(events.map(async (item) => {
+            const card = document.createElement("article"); card.className = "event-card";
+            const image = document.createElement("img"); image.alt = `Ảnh minh chứng sự kiện ${item.id}`;
+            const imageResponse = await fetch(new URL(item.image_url, API_BASE), { headers: { Authorization: `Bearer ${accessToken}` } });
+            if (imageResponse.ok) { image.src = URL.createObjectURL(await imageResponse.blob()); image.dataset.objectUrl = "true"; }
+            const info = document.createElement("div"); info.className = "event-card-info";
+            const title = document.createElement("h3"); title.textContent = `${item.object_type} — ${item.location}`;
+            const time = document.createElement("p"); time.textContent = `Thời gian: ${new Date(item.occurred_at).toLocaleString("vi-VN")}`;
+            const source = document.createElement("p"); source.textContent = `${item.source_type === "camera" ? "Camera" : "Video"}: ${item.source_id} · ID theo dõi: ${item.track_id ?? "—"}`;
+            const id = document.createElement("small"); id.textContent = `Mã sự kiện: ${item.id}${item.media_offset_seconds == null ? "" : ` · Mốc video: ${item.media_offset_seconds}s`}`;
+            const deleteButton = document.createElement("button"); deleteButton.type = "button"; deleteButton.textContent = "Xóa sự kiện";
+            deleteButton.addEventListener("click", async () => {
+              if (!window.confirm(`Xóa sự kiện #${item.id} và ảnh minh chứng? Không thể khôi phục.`)) return;
+              deleteButton.disabled = true;
+              try {
+                const deleteResponse = await fetch(`${API_BASE}/api/events/${item.id}`, { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` } });
+                const result = await deleteResponse.json();
+                if (!deleteResponse.ok) throw new Error(result.detail || `Backend trả về HTTP ${deleteResponse.status}`);
+                await fetchDetectionEvents();
+              } catch (error) {
+                message.textContent = error.message || "Không xóa được sự kiện.";
+                deleteButton.disabled = false;
+              }
+            });
+            info.append(title, time, source, id, deleteButton); card.append(image, info); container.append(card);
+          }));
+        } catch (error) { message.textContent = error.message || "Không tải được lịch sử sự kiện."; }
+        finally { detectionEventsLoading = false; }
+      }
+      document.getElementById("event-search-button").addEventListener("click", fetchDetectionEvents);
+      document.getElementById("event-refresh-button").addEventListener("click", fetchDetectionEvents);
+      document.getElementById("event-search").addEventListener("keydown", (event) => { if (event.key === "Enter") fetchDetectionEvents(); });
+
+      document.getElementById("video-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const button = document.getElementById("analyze-video-button");
+        const message = document.getElementById("video-message");
+        const summary = document.getElementById("video-summary");
+        const player = document.getElementById("annotated-video");
+        const download = document.getElementById("download-video");
+        const oldVideoUrl = player.dataset.objectUrl;
+        if (oldVideoUrl) URL.revokeObjectURL(oldVideoUrl);
+        download.hidden = true;
+        player.hidden = true;
+        summary.replaceChildren();
+        message.textContent = "Đang phân tích video; thời gian xử lý tùy độ dài video và cấu hình máy…";
+        button.disabled = true;
+        try {
+          const requestBody = new FormData(form);
+          requestBody.append("zones", JSON.stringify(videoZones));
+          const response = await fetch(`${API_BASE}/api/videos/analyze`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${accessToken}` },
+            body: requestBody,
+          });
+          const result = await response.json();
+          if (response.status === 401) {
+            accessToken = null;
+            document.getElementById("login-form").hidden = false;
+            document.getElementById("account-settings").hidden = true;
+            document.getElementById("video-test").hidden = true;
+            document.getElementById("live-camera-section").hidden = true;
+            document.getElementById("event-history").hidden = true;
+            stopCamera();
+            throw new Error("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+          }
+          if (!response.ok) throw new Error(result.detail || `Backend trả về HTTP ${response.status}`);
+
+          fetchDetectionEvents();
+          const list = document.createElement("ul");
+          const addRow = (text) => {
+            const row = document.createElement("li");
+            row.textContent = text;
+            list.append(row);
+          };
+          addRow(`Video: ${result.video_name}`);
+          addRow(`Thời lượng xử lý: ${result.duration_seconds} giây (${result.processed_frames} khung hình)`);
+          addRow(`Người được theo dõi: ${result.people_count}`);
+          const vehicles = Object.entries(result.vehicle_counts || {});
+          addRow(`Phương tiện: ${vehicles.length ? vehicles.map(([name, count]) => `${name}: ${count}`).join(" · ") : "không phát hiện"}`);
+          addRow("Nhóm trang phục gần giống nhau:");
+          if (!result.uniform_groups.length) addRow("Chưa đủ dữ liệu trang phục để tạo nhóm.");
+          result.uniform_groups.forEach((group) => {
+            addRow(`${group.name}: ${group.person_count} người · ID theo dõi ${group.track_ids.join(", ")}`);
+          });
+          if (result.events?.length) {
+            addRow(`Sự kiện trong vùng (${result.events.length}):`);
+            result.events.forEach((item) => addRow(`${item.object_type} · ${item.zone_name} · ${item.media_offset_seconds}s · email: ${item.notification_status === "sent" ? "đã gửi" : item.notification_status === "not_configured" ? "chưa cấu hình" : item.notification_status || "—"}`));
+          } else addRow(videoZones.length ? "Không có đối tượng ở trong vùng đủ 5 giây." : "Chưa vẽ vùng nên không tạo cảnh báo vùng.");
+          summary.append(list);
+
+          const videoResponse = await fetch(new URL(result.annotated_video_url, API_BASE), {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          if (!videoResponse.ok) throw new Error("Không tải được video đã đánh dấu.");
+          const objectUrl = URL.createObjectURL(await videoResponse.blob());
+          player.src = objectUrl;
+          player.dataset.objectUrl = objectUrl;
+          download.href = objectUrl;
+          download.download = `schoolguard_${result.video_id}.mp4`;
+          download.hidden = false;
+          player.hidden = false;
+          message.textContent = "Phân tích xong. ID là mã theo dõi trong video; nhóm được tạo theo độ giống màu áo, không phải nhận diện danh tính.";
+        } catch (error) {
+          message.textContent = error.message || "Phân tích video thất bại.";
+        } finally {
+          button.disabled = false;
+        }
+      });
+      let cameraStream = null;
+      const cameraPreview = document.getElementById("live-camera-preview");
+      const cameraMessage = document.getElementById("camera-message");
+      const stopCameraButton = document.getElementById("stop-camera");
+      const cameraOverlay = document.getElementById("live-camera-overlay");
+      const overlayContext = cameraOverlay.getContext("2d");
+      const captureCanvas = document.createElement("canvas");
+      let liveDetectionTimer = null;
+      let liveDetectionBusy = false;
+      let cameraSessionId = null;
+      const activeVisualAlerts = new Map();
+      let cameraAlertUntil = 0;
+      let cameraAlertMessage = "";
+
+      async function analyzeCameraFrame() {
+        if (!cameraStream || liveDetectionBusy || cameraPreview.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
+        liveDetectionBusy = true;
+        const streamAtCapture = cameraStream;
+        try {
+          const scale = Math.min(1, 640 / cameraPreview.videoWidth);
+          captureCanvas.width = Math.max(1, Math.round(cameraPreview.videoWidth * scale));
+          captureCanvas.height = Math.max(1, Math.round(cameraPreview.videoHeight * scale));
+          captureCanvas.getContext("2d").drawImage(cameraPreview, 0, 0, captureCanvas.width, captureCanvas.height);
+          const frameBlob = await new Promise((resolve) => captureCanvas.toBlob(resolve, "image/jpeg", 0.72));
+          if (!frameBlob) throw new Error("Không chụp được khung hình camera.");
+
+          const body = new FormData();
+          body.append("file", frameBlob, "camera-frame.jpg");
+          body.append("stream_id", cameraSessionId);
+          body.append("source_name", "Camera trực tiếp");
+          body.append("zones", JSON.stringify(cameraZones));
+          body.append("selected_classes", JSON.stringify(cameraEditor.selectedClasses()));
+          const response = await fetch(`${API_BASE}/api/live/detect`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${accessToken}` },
+            body,
+          });
+          const result = await response.json();
+          if (response.status === 401) {
+            accessToken = null;
+            document.getElementById("login-form").hidden = false;
+            document.getElementById("account-settings").hidden = true;
+            document.getElementById("video-test").hidden = true;
+            document.getElementById("live-camera-section").hidden = true;
+            document.getElementById("event-history").hidden = true;
+            stopCamera();
+            document.getElementById("login-error").textContent = "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.";
+            return;
+          }
+          if (!response.ok) throw new Error(result.detail || `Backend trả về HTTP ${response.status}`);
+          if (cameraStream !== streamAtCapture) return;
+
+          cameraOverlay.width = result.width;
+          cameraOverlay.height = result.height;
+          overlayContext.clearRect(0, 0, result.width, result.height);
+          const lineWidth = Math.max(2, result.width / 320);
+          const fontSize = Math.max(12, result.width / 42);
+          overlayContext.lineWidth = lineWidth;
+          overlayContext.font = `600 ${fontSize}px Segoe UI, sans-serif`;
+          const alertNow = Date.now();
+          for (const item of result.events || []) {
+            activeVisualAlerts.set(item.track_id, { zone_id: item.zone_id, until: alertNow + 5000 });
+            cameraEditor.setAlerted(item.zone_id);
+            cameraAlertUntil = alertNow + 5000;
+            cameraAlertMessage = `⚠️ ${item.object_type} (ID ${item.track_id}) ở ${item.zone_name} đủ 5 giây. Thông báo: ${item.notification_status}.`;
+          }
+          for (const detection of result.detections) {
+            const [x1, y1, x2, y2] = detection.box;
+            const visualAlert = activeVisualAlerts.get(detection.track_id);
+            const isAlerted = visualAlert && visualAlert.until > alertNow;
+            if (visualAlert && !isAlerted) activeVisualAlerts.delete(detection.track_id);
+            const color = isAlerted ? "#dc2626" : detection.color;
+            const label = `${detection.label} ID:${detection.track_id ?? "—"} ${Math.round(detection.confidence * 100)}%`;
+            overlayContext.strokeStyle = color;
+            overlayContext.fillStyle = color;
+            overlayContext.strokeRect(x1, y1, x2 - x1, y2 - y1);
+            const labelY = Math.max(fontSize + 6, y1);
+            const labelWidth = overlayContext.measureText(label).width + 12;
+            overlayContext.fillRect(x1, labelY - fontSize - 6, labelWidth, fontSize + 8);
+            overlayContext.fillStyle = "#ffffff";
+            overlayContext.fillText(label, x1 + 6, labelY - 4);
+          }
+          cameraEditor.redraw();
+          if (result.events?.length) {
+            cameraMessage.textContent = cameraAlertMessage;
+            return;
+          }
+          if (Date.now() < cameraAlertUntil) { cameraMessage.textContent = cameraAlertMessage; return; }
+          cameraMessage.textContent = result.detections.length
+            ? `Đang nhận diện: ${result.detections.length} đối tượng. Các khung được cập nhật theo tốc độ xử lý của máy.`
+            : "Camera đang chạy; chưa phát hiện người hoặc phương tiện trong khung hình.";
+        } catch (error) {
+          cameraMessage.textContent = `Lỗi nhận diện camera: ${error.message}`;
+        } finally {
+          liveDetectionBusy = false;
+        }
+      }
+
+      async function startCamera() {
+        if (cameraStream) return;
+        if (!navigator.mediaDevices?.getUserMedia) {
+          cameraMessage.textContent = "Trình duyệt không hỗ trợ camera. Hãy mở trang qua localhost hoặc HTTPS.";
+          return;
+        }
+        try {
+          cameraStream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+            audio: false,
+          });
+          cameraPreview.srcObject = cameraStream;
+          cameraSessionId = crypto.randomUUID ? crypto.randomUUID() : `camera-${Date.now()}`;
+          cameraMessage.textContent = "Camera đã bật; đang gửi khung hình mẫu đến backend local để nhận diện…";
+          document.getElementById("start-camera").disabled = true;
+          stopCameraButton.disabled = false;
+          liveDetectionTimer = setInterval(analyzeCameraFrame, 850);
+          analyzeCameraFrame();
+        } catch (error) {
+          const messages = {
+            NotAllowedError: "Bạn chưa cấp quyền dùng camera cho trang này.",
+            NotFoundError: "Không tìm thấy camera trên thiết bị.",
+            NotReadableError: "Camera đang được ứng dụng khác sử dụng.",
+          };
+          cameraMessage.textContent = messages[error.name] || `Không mở được camera: ${error.message}`;
+        }
+      }
+
+      function stopCamera() {
+        if (liveDetectionTimer) clearInterval(liveDetectionTimer);
+        liveDetectionTimer = null;
+        if (cameraStream) cameraStream.getTracks().forEach((track) => track.stop());
+        cameraStream = null;
+        cameraSessionId = null;
+        cameraEditor.setAvailable(false);
+        cameraPreview.srcObject = null;
+        overlayContext.clearRect(0, 0, cameraOverlay.width, cameraOverlay.height);
+        document.getElementById("start-camera").disabled = false;
+        stopCameraButton.disabled = true;
+        cameraMessage.textContent = "Camera chưa bật.";
+      }
+
+      document.getElementById("start-camera").addEventListener("click", startCamera);
+      stopCameraButton.addEventListener("click", stopCamera);
+      window.addEventListener("beforeunload", stopCamera);
+
+      // Tự động quét API mỗi 2 giây
+      setInterval(fetchAlerts, 2000);
+      setInterval(fetchDetectionEvents, 10000);
+    </script>
+  </body>
+</html>
