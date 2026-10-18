@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SchoolGuard AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ========== ĐẦU TRANG ========== -->
+  <header class="top">
+    <div class="brand">
+      <svg class="brand-icon" viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M16 2 4 7v8c0 7.5 5 13 12 15 7-2 12-7.5 12-15V7L16 2Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+        <circle cx="16" cy="14" r="4" fill="none" stroke="currentColor" stroke-width="2"/>
+        <path d="M16 18v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <div>
+        <h1>SchoolGuard AI</h1>
+        <p>Hệ thống giám sát thông minh và cảnh báo sớm an ninh khuôn viên trường học</p>
+      </div>
+    </div>
+    <div class="top-right">
+      <span class="chip" id="modelChip">Chế độ demo</span>
+      <time id="clock"></time>
+      <button type="button" class="btn light" id="btnSettings">Cài đặt</button>
+    </div>
+  </header>
+  <div class="hazard" aria-hidden="true"></div>
+
+  <main class="layout">
+
+    <!-- ========== CỘT CAMERA ========== -->
+    <section class="stage-col">
+      <div class="cam-tabs" id="camTabs" role="tablist"></div>
+
+      <div class="stage" id="stage">
+        <canvas id="view" width="960" height="540" aria-label="Hình ảnh camera kèm khung phát hiện"></canvas>
+        <video id="video" playsinline muted hidden></video>
+      </div>
+
+      <div class="statbar" aria-live="off">
+        <div class="stat"><span>Người trong khung</span><strong id="stPeople">0</strong></div>
+        <div class="stat"><span>Trong vùng cấm</span><strong id="stZone">0</strong></div>
+        <div class="stat"><span>Vật nghi bỏ quên</span><strong id="stObj">0</strong></div>
+        <div class="stat"><span>Lượt vào / ra</span><strong id="stCount">0 / 0</strong></div>
+        <div class="stat"><span>Tốc độ AI</span><strong id="stFps">0 fps</strong></div>
+      </div>
+
+      <div class="toolbar">
+        <label class="inline">
+          <span>Nguồn video</span>
+          <select id="source">
+            <option value="demo">Demo mô phỏng</option>
+            <option value="webcam">Webcam</option>
+            <option value="file">Tệp video…</option>
+          </select>
+        </label>
+        <input type="file" id="fileInput" accept="video/*" hidden>
+        <span class="sep" aria-hidden="true"></span>
+        <button type="button" class="btn tool" data-tool="forbidden">Vẽ vùng cấm</button>
+        <button type="button" class="btn tool" data-tool="watch">Vẽ vùng theo dõi</button>
+        <button type="button" class="btn tool" data-tool="line">Đặt vạch đếm</button>
+        <button type="button" class="btn" id="btnFlip">Đảo hướng vào/ra</button>
+        <button type="button" class="btn danger" id="btnClear">Xóa hết vùng</button>
+      </div>
+      <p class="hint" id="toolHint"></p>
+
+      <div class="demo-actions" id="demoActions">
+        <span>Thử nhanh tình huống:</span>
+        <button type="button" class="btn sm" data-demo="intruder">Có người vào vùng cấm</button>
+        <button type="button" class="btn sm" data-demo="carrier">Có người bỏ túi lại</button>
+        <button type="button" class="btn sm" data-demo="crowd">Đông người tụ tập</button>
+      </div>
+
+      <div class="cards">
+        <div class="card">
+          <h2>Vùng giám sát của camera này</h2>
+          <ul class="zone-list" id="zoneList"></ul>
+        </div>
+        <div class="card">
+          <h2>Quyền riêng tư</h2>
+          <label class="check">
+            <input type="checkbox" id="blurToggle">
+            <span>Làm mờ vùng đầu người trong hình và ảnh chụp</span>
+          </label>
+          <ul class="plain">
+            <li>Chỉ phát hiện sự kiện, không nhận diện danh tính.</li>
+            <li>Video được xử lý ngay trên máy này, không tải lên Internet.</li>
+            <li>Nhật ký tự xóa sau <b id="retentionText">7</b> ngày.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== CỘT CẢNH BÁO ========== -->
+    <aside class="side">
+      <div class="side-head">
+        <h2>Cảnh báo</h2>
+        <span class="badge" id="openBadge" hidden>0</span>
+        <span class="grow"></span>
+        <button type="button" class="btn sm" id="btnExport">Xuất CSV</button>
+        <button type="button" class="btn sm danger" id="btnClearLog">Xóa nhật ký</button>
+      </div>
+      <div class="tabs" id="alertTabs">
+        <button type="button" data-f="open">Đang mở</button>
+        <button type="button" data-f="all">Nhật ký</button>
+      </div>
+      <div class="alert-list" id="alertList"></div>
+    </aside>
+  </main>
+
+  <dialog class="dlg" id="dlgSettings">
+    <form id="formSettings">
+      <h3>Cài đặt hệ thống</h3>
+      <div class="settings-grid" id="settingsFields"></div>
+      <div class="dlg-actions">
+        <button type="button" class="btn ghost" id="btnDefaults">Khôi phục mặc định</button>
+        <button type="button" class="btn" data-close>Hủy</button>
+        <button type="submit" class="btn primary">Lưu</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
