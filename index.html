@@ -132,6 +132,7 @@
       .summary-card { background: white; border-radius: 10px; padding: 16px; border-left: 4px solid #2563eb; box-shadow: 0 3px 12px rgba(15, 23, 42, .08); }
       .summary-card strong { display: block; margin-top: 6px; font-size: 1.8rem; }
     </style>
+    <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
     <div class="header">
@@ -140,7 +141,7 @@
       <p>
         Trạng thái:
         <span style="color: green; font-weight: bold"
-          >Đang kết nối Backend...</span
+          ><span id="backend-status">Đang kết nối Backend...</span
         >
       </p>
     </div>
@@ -166,17 +167,23 @@
       <h2>Thông tin nhận cảnh báo</h2>
       <p>Lưu email/số điện thoại cho tài khoản đang đăng nhập. Chọn kênh camera; video sẽ gửi ảnh qua email nếu đã điền email.</p>
       <form id="notification-settings-form">
-        <label for="notify-email">Email/Gmail</label>
-        <input id="notify-email" type="email" maxlength="320" placeholder="admin@example.com" />
-        <label for="notify-phone">Số điện thoại</label>
-        <input id="notify-phone" type="tel" maxlength="40" placeholder="+84901234567" />
-        <label for="notify-channel">Cảnh báo camera</label>
-        <select id="notify-channel">
-          <option value="none">Tắt</option>
-          <option value="email">Email</option>
-          <option value="sms">SMS</option>
-          <option value="both">Email và SMS</option>
-        </select>
+        <div class="notification-field">
+          <label for="notify-email">Email/Gmail</label>
+          <input id="notify-email" type="email" maxlength="320" placeholder="admin@example.com" />
+        </div>
+        <div class="notification-field">
+          <label for="notify-phone">Số điện thoại</label>
+          <input id="notify-phone" type="tel" maxlength="40" placeholder="+84901234567" />
+        </div>
+        <div class="notification-field">
+          <label for="notify-channel">Cảnh báo camera</label>
+          <select id="notify-channel">
+            <option value="none">Tắt</option>
+            <option value="email">Email</option>
+            <option value="sms">SMS</option>
+            <option value="both">Email và SMS</option>
+          </select>
+        </div>
         <button type="submit">Lưu thông tin</button>
         <span id="notification-settings-status" role="status"></span>
       </form>
@@ -432,6 +439,7 @@
           const response = await fetch(`${API_BASE}/token`, { method: "POST", body });
           if (!response.ok) throw new Error("Sai tài khoản hoặc mật khẩu");
           accessToken = (await response.json()).access_token;
+          document.getElementById("backend-status").textContent = "Backend local đang hoạt động";
           loginForm.hidden = true;
           document.getElementById("account-settings").hidden = false;
           document.getElementById("video-test").hidden = false;
