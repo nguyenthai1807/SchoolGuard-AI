@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>SchoolGuard AI · Trung tâm an ninh</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#content">Đến nội dung chính</a>
+  <button id="themeToggle" class="theme-toggle" type="button" aria-pressed="false" aria-label="Chuyển sang chế độ tối"><span id="themeIcon" aria-hidden="true">☾</span><span id="themeLabel">Chế độ tối</span></button>
+  <section id="login" class="login">
+    <form id="loginForm" class="loginbox">
+      <div class="logo"><b class="shield" aria-hidden="true">S</b>SchoolGuard <span>AI</span></div>
+      <div class="section-kicker login-kicker">AN NINH KHUÔN VIÊN</div>
+      <h1>Chào mừng trở lại</h1><p class="muted">Theo dõi an ninh. Chủ động bảo vệ.</p>
+      <label for="sourceMode">Không gian làm việc</label><select id="sourceMode" class="full"><option value="backend">Kết nối hệ thống</option><option value="demo">Bản mẫu</option></select>
+      <div id="serverField"><label for="serverUrl">Máy chủ</label><input id="serverUrl" type="url" value="http://127.0.0.1:8000" spellcheck="false" autocomplete="url" required></div>
+      <label for="username">Tên đăng nhập</label><input id="username" name="username" autocomplete="username" maxlength="100" required>
+      <label for="password">Mật khẩu</label><div class="password-wrap"><input id="password" name="password" type="password" autocomplete="current-password" maxlength="200" required><button id="togglePassword" type="button" class="password-toggle" aria-label="Hiện mật khẩu" aria-pressed="false">Hiện</button></div>
+      <p id="loginError" class="error" role="alert" aria-live="polite"></p>
+      <button id="loginButton" class="full" type="submit">Đăng nhập <span aria-hidden="true">→</span></button><small class="login-footer">SchoolGuard AI · Campus Security</small>
+    </form>
+  </section>
+  <div id="app" hidden>
+    <button id="menuBackdrop" class="menu-backdrop" type="button" aria-label="Đóng điều hướng" hidden></button>
+    <aside id="sidebar" class="sidebar">
+      <div class="logo"><b class="shield" aria-hidden="true">S</b>SchoolGuard <span>AI</span></div><small>AN NINH KHUÔN VIÊN</small>
+      <nav id="navigation" class="nav" aria-label="Điều hướng chính"><button type="button" data-page="dashboard" class="active" aria-current="page"><span aria-hidden="true">▦</span> Tổng quan</button><div id="moduleNavigation"></div><button type="button" data-page="settings"><span aria-hidden="true">⚙</span> Giao diện</button></nav>
+      <div class="sidefoot"><span id="sourceBadge" class="pill">Hệ thống</span><div class="account"><div id="avatar" class="avatar" aria-hidden="true">K</div><div><strong id="userLabel"></strong><small>Phiên đăng nhập</small></div></div><button id="logout" type="button" class="secondary full">Đăng xuất</button></div>
+    </aside>
+    <main class="main"><header class="top"><div class="row"><button id="menuButton" class="secondary mobile-menu" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Mở điều hướng">☰</button><div><div class="eyebrow">TRUNG TÂM ĐIỀU HÀNH</div><h1 id="pageTitle" tabindex="-1">Tổng quan an ninh</h1><p id="pageSubtitle" class="muted"></p></div></div></header><div id="connectionStatus" class="connection-status" role="status" aria-live="polite"><span class="connection-dot" aria-hidden="true"></span><div><strong id="connectionTitle">Sẵn sàng kết nối</strong><span id="connectionMessage"></span></div><button id="connectionRetry" class="secondary" type="button" hidden>Thử lại</button></div><div id="content" tabindex="-1"></div><footer class="workspace-footer"><span>SchoolGuard AI</span><span id="lastSync" aria-live="polite">Chưa cập nhật</span></footer></main>
+  </div>
+  <dialog id="evidenceDialog" aria-labelledby="evidenceTitle"><div class="row between"><h2 id="evidenceTitle">Ảnh sự kiện</h2><button id="closeEvidence" class="secondary" type="button" aria-label="Đóng ảnh sự kiện">Đóng</button></div><div id="evidenceContent"></div></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>
