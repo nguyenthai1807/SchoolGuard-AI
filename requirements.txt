@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+python-multipart
+sqlalchemy
+opencv-python
+Pillow>=10,<13
+ultralytics
+requests
+-e ./ai-service

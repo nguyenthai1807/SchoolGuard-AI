@@ -1,0 +1,53 @@
+name: BE-1 AI tests
+on:
+  push:
+    paths:
+      - "ai-service/**"
+      - "tests/**"
+      - "main.py"
+      - "index.html"
+      - "home_video_analysis.py"
+      - "video_analysis.py"
+      - "requirements*.txt"
+      - ".github/workflows/ai-tests.yml"
+  pull_request:
+    paths:
+      - "ai-service/**"
+      - "tests/**"
+      - "main.py"
+      - "index.html"
+      - "home_video_analysis.py"
+      - "video_analysis.py"
+      - "requirements*.txt"
+      - ".github/workflows/ai-tests.yml"
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Deterministic tests inject detections, so CI need not download torch or YOLO weights.
+      - run: python -m pip install numpy opencv-python-headless imageio-ffmpeg pytest ruff
+      - run: python -m pip install -e ./ai-service --no-deps
+      - run: python -m ruff check ai-service
+      - run: python -m pytest -q
+        working-directory: ai-service
+  app-contract-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: >-
+          python -m pip install fastapi uvicorn python-multipart sqlalchemy requests
+          opencv-python-headless numpy imageio-ffmpeg pytest httpx ruff
+      - run: python -m pip install -e ./ai-service --no-deps
+      - run: >-
+          python -m ruff check main.py home_video_analysis.py video_analysis.py
+          demo_ai.py tests --ignore B008,BLE001
+      - run: python -m pytest --rootdir=. tests -q
