@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0a1521">
+  <title>LH25 · Giám sát an toàn tại nhà</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/lh25.css">
+</head>
+<body>
+<a class="skip-link" href="#content">Bỏ qua menu</a>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+<section id="login" class="login">
+  <div class="login-intro">
+    <div class="intro-brand"><span class="brand-mark">L<span>H</span></span><span>LH25<small>HOME SAFETY STUDIO</small></span></div>
+    <div><span class="eyebrow">LOCAL-FIRST · AI VIDEO MONITORING</span><h1>Nhìn thấy sớm.<br><em>Phản ứng kịp thời.</em></h1><p>Một không gian để kiểm tra video, quan sát webcam và xem lại cảnh báo có ảnh bằng chứng — tất cả xử lý trên máy của bạn.</p></div>
+    <div class="intro-points"><span>01 / Phát hiện té ngã bằng pose</span><span>02 / Theo dõi lửa &amp; khói</span><span>03 / Cảnh báo người vượt mức</span></div>
+    <small>AI chỉ hỗ trợ quan sát. Hãy xác minh bằng chứng; không thay thế thiết bị báo cháy hoặc chăm sóc y tế.</small>
+  </div>
+  <div class="login-card"><span class="eyebrow">CHÀO MỪNG TRỞ LẠI</span><h2>Đăng nhập LH25</h2><p>Truy cập bảng điều khiển an toàn tại nhà.</p>
+    <form id="login-form"><label>Tài khoản<input name="username" value="admin" autocomplete="username" required></label><label>Mật khẩu<input name="password" type="password" autocomplete="current-password" required></label><button type="submit">Vào bảng điều khiển <span aria-hidden="true">↗</span></button><p id="login-error" class="error" role="alert"></p></form>
+    <small>Dùng mật khẩu trong <code>.env</code>; nếu chưa đặt, xem <code>runtime/admin-password.txt</code> sau lần chạy đầu.</small>
+  </div>
+</section>
+<div id="shell" hidden>
+  <aside><a class="brand" href="#overview"><span class="brand-mark">L<span>H</span></span><span>LH25<small>HOME SAFETY STUDIO</small></span></a><div class="nav-label">KHÔNG GIAN CỦA BẠN</div>
+    <nav aria-label="Điều hướng chính"><a href="#overview" data-nav="overview">Tổng quan</a><a href="#library" data-nav="library">Phân tích video</a><a href="#camera" data-nav="camera">Webcam trực tiếp</a><a href="#jobs" data-nav="jobs">Tác vụ xử lý</a><a href="#alerts" data-nav="alerts">Cảnh báo</a><a href="#system" data-nav="system">Hệ thống</a></nav>
+    <div class="aside-bottom"><span class="dot"></span> Xử lý tại máy của bạn<p id="identity"></p><button id="logout" class="quiet">Đăng xuất</button></div>
+  </aside>
+  <main><header><div><span class="eyebrow">LH25 / HOME MONITOR</span><h1 id="page-title">Tổng quan</h1></div><span class="tag">● LOCAL · PRIVATE</span></header><div id="content" tabindex="-1"></div></main>
+</div>
+<script src="/static/app.js" defer></script>
+</body>
+</html>

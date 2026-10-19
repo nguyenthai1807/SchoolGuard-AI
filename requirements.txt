@@ -6,4 +6,6 @@ opencv-python
 Pillow>=10,<13
 ultralytics
 requests
+imageio-ffmpeg>=0.6,<1
+lap>=0.5.12,<1
 -e ./ai-service

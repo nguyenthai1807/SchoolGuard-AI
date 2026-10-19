@@ -1,0 +1,17 @@
+{
+  "description": "Small assistant-reviewed visual spot-check, not independent benchmark ground truth. Boxes approximate visible person extent at 856x480. Exclude silhouettes smaller than 15 px high and slivers narrower than 8 px. Includes occluded and edge-truncated people. Labels reviewed on full-resolution originals; no training performed with these labels.",
+  "iou_threshold": 0.5,
+  "min_height": 15,
+  "min_width": 8,
+  "samples": [
+    {"scene": 1, "boxes": [[58,97,95,202],[158,79,204,174]]},
+    {"scene": 3, "boxes": [[237,54,331,260],[442,119,550,372]]},
+    {"scene": 4, "boxes": [[53,48,83,119],[82,55,111,125]]},
+    {"scene": 5, "boxes": [[279,108,359,284]]},
+    {"scene": 7, "boxes": [[170,201,271,375],[194,191,246,335],[836,268,856,414],[157,119,172,146]]},
+    {"scene": 8, "boxes": [[109,234,177,350],[108,308,194,480],[520,145,546,224],[542,131,570,192],[569,141,590,199],[593,133,617,194],[613,143,638,205],[631,130,656,189],[657,128,679,182]]},
+    {"scene": 9, "boxes": [[296,160,312,222],[339,174,372,269],[430,176,478,265],[565,221,624,403],[641,233,690,385]]},
+    {"scene": 12, "boxes": [[191,14,213,44],[214,12,232,44],[235,15,256,44]]},
+    {"scene": 13, "boxes": [[133,129,184,289]]}
+  ]
+}
