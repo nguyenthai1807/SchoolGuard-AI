@@ -23,6 +23,9 @@ class Database:
                 CREATE INDEX IF NOT EXISTS alerts_job ON alerts(job_id);
                 CREATE INDEX IF NOT EXISTS alerts_status ON alerts(status,created_at);
                 CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY, at TEXT NOT NULL, user_id INTEGER, action TEXT NOT NULL, target TEXT NOT NULL, detail TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS faces(id TEXT PRIMARY KEY, scope TEXT NOT NULL, kind TEXT NOT NULL, job_id TEXT NOT NULL REFERENCES jobs(id), day TEXT NOT NULL, ordinal INTEGER NOT NULL, first_seen TEXT NOT NULL, last_seen TEXT NOT NULL, video_time REAL NOT NULL, seen_count INTEGER NOT NULL, confidence REAL NOT NULL, embedding BLOB NOT NULL, image TEXT NOT NULL);
+                CREATE INDEX IF NOT EXISTS faces_scope ON faces(scope,ordinal);
+                CREATE INDEX IF NOT EXISTS faces_day ON faces(kind,day);
                 PRAGMA user_version=1;
             """)
             columns = {row[1] for row in conn.execute("PRAGMA table_info(alerts)")}
@@ -34,7 +37,7 @@ class Database:
             }.items():
                 if name not in columns:
                     conn.execute(f"ALTER TABLE alerts ADD COLUMN {name} {definition}")
-            conn.execute("PRAGMA user_version=2")
+            conn.execute("PRAGMA user_version=3")
 
     @contextmanager
     def connect(self):

@@ -94,7 +94,19 @@ legend { color: var(--mint); font-weight: 700; padding: 0 7px; }
 .camera-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .camera-alerts { max-height: 260px; overflow: auto; }
 .camera-alerts li { margin: 8px 0; }
+.job-faces { margin-top: 14px; }
+.face-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 12px; }
+.face-card { min-width: 0; overflow: hidden; border: 1px solid #36566a; border-radius: 12px; background: #0b1b29; }
+.face-card img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; }
+.face-card div { padding: 9px; }
+.face-card strong { display: block; font-size: 12px; color: #eff7f4; }
+.face-card small { display: block; margin-top: 3px; font-size: 10px; line-height: 1.4; }
+.face-history { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: 20px; align-items: start; }
+.face-day { display: flex; justify-content: space-between; gap: 10px; padding: 11px; margin: 5px 0; border: 1px solid #36566a; border-radius: 9px; }
+.face-day.active { background: #173f3e; border-color: #5bc6b6; }
+.face-history .face-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
 @media(max-width:1100px) { .camera-layout { grid-template-columns: 1fr; } .login { gap: 25px; } }
+@media(max-width:800px) { .face-history { grid-template-columns: 1fr; } }
 @media(max-width:800px) { aside { position: static; width: auto; padding: 15px; } .brand { display: none; } .nav-label, .aside-bottom { display: none; } nav { display: flex; overflow-x: auto; } nav a { white-space: nowrap; } main { margin: 0; padding: 22px; } .login { grid-template-columns: 1fr; } .login-intro { gap: 24px; } .intro-brand { display: none; } .login-intro h1 { font-size: 42px; } .login-card { max-width: none; } .metrics { grid-template-columns: repeat(2, 1fr); } }
 @media(max-width:540px) { .login { padding: 18px; } .login-intro p { font-size: 15px; } .intro-points { display: none; } .panel { padding: 17px; } main { padding: 16px; } header .tag { display: none; } .metrics { gap: 10px; } .metric { min-height: 108px; } .metric strong { font-size: 29px; } }
 @media(prefers-reduced-motion:reduce) { button { transition: none; } }

@@ -7,6 +7,7 @@ import time
 import uuid
 from collections import defaultdict, deque
 from contextlib import asynccontextmanager
+from datetime import date
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -19,6 +20,7 @@ from .auth import bootstrap, hash_password, make_session, token_hash, verify_pas
 from .config import Settings
 from .db import Database, now, public_job
 from .detector import PersonDetector
+from .faces import FaceLedger, FaceRecognizer, models_ready
 from .fire import FireDetector
 from .live import LiveAnalyzer
 from .media import Reader, index_dataset, jpeg, metadata
@@ -27,13 +29,14 @@ from .telegram import TelegramNotifier
 from .worker import Worker
 
 
-def create_app(settings=None, detector_factory=None, fire_factory=None):
+def create_app(settings=None, detector_factory=None, fire_factory=None, face_factory=None):
     settings = settings or Settings()
     settings.runtime.mkdir(parents=True, exist_ok=True)
     db = Database(settings.runtime / "schoolguard.sqlite3")
     worker = Worker(db, settings,
                     **({"detector_factory": detector_factory} if detector_factory else {}),
-                    **({"fire_factory": fire_factory} if fire_factory else {}))
+                    **({"fire_factory": fire_factory} if fire_factory else {}),
+                    **({"face_factory": face_factory} if face_factory else {}))
     live_sessions = {}
     live_lock = threading.Lock()
     notifier = TelegramNotifier()
@@ -204,6 +207,7 @@ def create_app(settings=None, detector_factory=None, fire_factory=None):
             ),
             "telegram_configured": notifier.configured,
             "live_available": (settings.models / "yolo11n-pose.pt").is_file(),
+            "face_available": models_ready(settings),
             "detection_note": "Nhãn anomaly của ShanghaiTech không phải nhãn bounding box người. Pipeline fine-tune dùng nhãn người riêng; xem Huấn luyện AI để biết kết quả.",
         }
 
@@ -349,6 +353,8 @@ def create_app(settings=None, detector_factory=None, fire_factory=None):
             raise HTTPException(
                 409, "Chưa có model lửa/khói. Chạy python -m scripts.download_fire_model."
             )
+        if payload.recognize_faces and face_factory is None and not models_ready(settings):
+            raise HTTPException(409, "Chưa có model khuôn mặt. Chạy python -m scripts.download_face_models.")
         ident = uuid.uuid4().hex
         with db.connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
@@ -375,6 +381,8 @@ def create_app(settings=None, detector_factory=None, fire_factory=None):
             for name in ("fire-smoke-v1.onnx", "fire-model.json")
         ):
             raise HTTPException(409, "Chưa có model lửa/khói.")
+        if payload.recognize_faces and face_factory is None and not models_ready(settings):
+            raise HTTPException(409, "Chưa có model khuôn mặt. Chạy python -m scripts.download_face_models.")
         with live_lock:
             if live_sessions:
                 stale = [key for key, session in live_sessions.items()
@@ -390,7 +398,10 @@ def create_app(settings=None, detector_factory=None, fire_factory=None):
             config = payload.model_copy(update={"source_id": ident, "max_seconds": 0})
             detector = (detector_factory or PersonDetector)(settings, config)
             fire_detector = (fire_factory or FireDetector)(settings) if config.detect_fire else None
-            analyzer = LiveAnalyzer(config, detector, fire_detector)
+            face_ledger = (FaceLedger(db, settings.runtime, "live", ident,
+                                      (face_factory or FaceRecognizer)(settings))
+                           if config.recognize_faces else None)
+            analyzer = LiveAnalyzer(config, detector, fire_detector, face_ledger=face_ledger)
             live_sessions[ident] = {"analyzer": analyzer, "lock": threading.Lock(),
                                     "user_id": current["id"], "last_seen": time.monotonic()}
             with db.connect() as conn:
@@ -514,6 +525,46 @@ def create_app(settings=None, detector_factory=None, fire_factory=None):
                 content = path.read_bytes()
             return Response(content, media_type="image/jpeg")
         return FileResponse(path)
+
+    @app.get("/api/faces/days")
+    def face_days(limit: int = Query(31, ge=1, le=366), current=Depends(user)):
+        rows = db.all(
+            "SELECT day,count(*) count FROM faces WHERE kind='live' "
+            "GROUP BY day ORDER BY day DESC LIMIT ?", (limit,)
+        )
+        return {"items": rows}
+
+    @app.get("/api/faces")
+    def faces(job_id: str = "", day: str = "", offset: int = Query(0, ge=0),
+              limit: int = Query(100, ge=1, le=500), current=Depends(user)):
+        if bool(job_id) == bool(day):
+            raise HTTPException(422, "Chọn một video hoặc một ngày webcam.")
+        if job_id:
+            job(job_id)
+            where, args = "WHERE kind='video' AND job_id=?", (job_id,)
+        else:
+            try:
+                if date.fromisoformat(day).isoformat() != day:
+                    raise ValueError
+            except ValueError as exc:
+                raise HTTPException(422, "Ngày phải có dạng YYYY-MM-DD.") from exc
+            where, args = "WHERE kind='live' AND day=?", (day,)
+        rows = db.all(
+            "SELECT id,kind,job_id,day,ordinal,first_seen,last_seen,video_time,"
+            "seen_count,confidence FROM faces " + where +
+            " ORDER BY ordinal LIMIT ? OFFSET ?", (*args, limit, offset)
+        )
+        return {"items": rows, "total": db.one("SELECT count(*) n FROM faces " + where, args)["n"]}
+
+    @app.get("/api/faces/{ident}/image")
+    def face_image(ident: str, current=Depends(user)):
+        row = db.one("SELECT image FROM faces WHERE id=?", (ident,))
+        if not row or row["image"] != ident + ".jpg":
+            raise HTTPException(404, "Không có ảnh khuôn mặt.")
+        path = settings.runtime / "faces" / row["image"]
+        if not path.is_file():
+            raise HTTPException(404, "Ảnh khuôn mặt không còn trên máy.")
+        return FileResponse(path, media_type="image/jpeg")
 
     @app.get("/api/alerts")
     def alerts(

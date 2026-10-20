@@ -136,7 +136,8 @@ def test_db_migration_idempotent(client, app):
     from schoolguard.db import Database
 
     Database(app.state.db.path)
-    assert app.state.db.one("PRAGMA user_version")["user_version"] == 2
+    assert app.state.db.one("PRAGMA user_version")["user_version"] == 3
+    assert app.state.db.one("SELECT name FROM sqlite_master WHERE type='table' AND name='faces'")
 
 
 def test_rapid_body_collapse_requires_multiple_observations():

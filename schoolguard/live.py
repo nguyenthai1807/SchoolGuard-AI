@@ -11,10 +11,14 @@ from .rules import ZoneEngine
 
 
 class LiveAnalyzer:
-    def __init__(self, config, detector, fire_detector=None, clock=time.monotonic):
+    def __init__(self, config, detector, fire_detector=None, clock=time.monotonic,
+                 face_ledger=None):
         self.config = config
         self.detector = detector
         self.fire_detector = fire_detector
+        self.face_ledger = face_ledger
+        self.last_face = -10.0
+        self.face_state = {"visible": [], "total": 0, "day": None}
         self.clock = clock
         self.started = clock()
         self.last_stamp = -1.0
@@ -50,6 +54,12 @@ class LiveAnalyzer:
             hazards = self.fire_detector(frame)
             alerts.extend(self.fire.update(hazards, stamp))
             self.last_fire = stamp
+        if self.face_ledger and stamp - self.last_face >= 1.0:
+            self.face_state = self.face_ledger.update(frame, stamp)
+            self.last_face = stamp
         self.frames += 1
         return {"time": stamp, "detections": detections, "hazards": hazards,
-                "alerts": alerts, "people": len(detections), "frame": frame}
+                "alerts": alerts, "people": len(detections), "frame": frame,
+                "faces": self.face_state["visible"] if stamp == self.last_face else [],
+                "face_count_today": self.face_state["total"],
+                "face_day": self.face_state["day"]}

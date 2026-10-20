@@ -1,4 +1,4 @@
-param([int]$Port = 8766, [string]$Dataset = '')
+param([int]$Port = 8770, [string]$Dataset = '')
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
 if ($Dataset) { $env:SCHOOLGUARD_DATA = $Dataset }

@@ -14,10 +14,11 @@ python -m venv .venv
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 .\.venv\Scripts\python.exe scripts\download_models.py
 .\.venv\Scripts\python.exe -m scripts.download_fire_model
+.\.venv\Scripts\python.exe -m scripts.download_face_models
 .\start-lh25.ps1 -Dataset 'C:\Users\PCX\Downloads\splits\splits\shanghaitech'
 ```
 
-Mở <http://127.0.0.1:8766>. Tài khoản `admin`; LH25 dùng mật khẩu `LH25_ADMIN_PASSWORD` hoặc `SCHOOLGUARD_ADMIN_PASSWORD` trong `.env` khi tạo DB lần đầu. Nếu chưa có giá trị hợp lệ, mật khẩu ngẫu nhiên được lưu ở `runtime/admin-password.txt`. Không chia sẻ nội dung file này. DB LH25 ở `runtime/schoolguard.sqlite3`, **khác** DB của `main.py`; tài khoản chỉ được khởi tạo một lần, thay biến môi trường sau đó không tự đổi mật khẩu trong DB. Server chỉ bind `127.0.0.1`, một Uvicorn worker.
+Mở <http://127.0.0.1:8770>. Tài khoản `admin`; LH25 dùng mật khẩu `LH25_ADMIN_PASSWORD` hoặc `SCHOOLGUARD_ADMIN_PASSWORD` trong `.env` khi tạo DB lần đầu. Nếu chưa có giá trị hợp lệ, mật khẩu ngẫu nhiên được lưu ở `runtime/admin-password.txt`. Không chia sẻ nội dung file này. DB LH25 ở `runtime/schoolguard.sqlite3`, **khác** DB của `main.py`; tài khoản chỉ được khởi tạo một lần, thay biến môi trường sau đó không tự đổi mật khẩu trong DB. Server chỉ bind `127.0.0.1`, một Uvicorn worker.
 
 Nếu không dùng bộ ShanghaiTech, bỏ `-Dataset`; video riêng có thể tải ở trang **Phân tích video** (tối đa 1 GB). `runtime/`, `.env`, model weights và video nghiên cứu không được commit.
 
@@ -44,9 +45,19 @@ Không dán token vào issue, commit, ảnh màn hình hoặc chat. Nếu lộ t
 ## Dùng video và webcam
 
 - **Video:** chọn nguồn ShanghaiTech hoặc tải MP4/AVI/MOV/MKV; vẽ đa giác nếu cần. Mặc định YOLO11n Pose, nghi té ngã, lửa/khói khi model sẵn sàng, và `n=1`. `0` giây = cả clip. Xem tiến độ, video H.264 và cảnh báo ở **Tác vụ xử lý**.
-- **Webcam:** mở **Webcam trực tiếp**, chọn `n`, bật camera và cấp quyền trình duyệt. Trình duyệt gửi JPEG định kỳ về backend cùng máy; pose, lửa/khói và luật ngưỡng dùng cùng lõi với video. Chỉ ảnh bằng chứng có cảnh báo được lưu; webcam không được ghi video liên tục. Dừng camera trước khi đóng tab để hoàn tất phiên trong nhật ký; nếu tab tắt đột ngột, phiên cũ sẽ được thu hồi khi mở phiên mới sau 45 giây không có frame. Camera trình duyệt cần `localhost` hoặc HTTPS.
+- **Webcam:** mở **Webcam trực tiếp**, chọn `n`, bật camera và cấp quyền trình duyệt. Trình duyệt gửi JPEG định kỳ về backend cùng máy; pose, lửa/khói và luật ngưỡng dùng cùng lõi với video. Webcam không được ghi video liên tục; khi bật nhận diện khuôn mặt, ảnh đại diện của từng khuôn mặt cũng được lưu trên máy. Dừng camera trước khi đóng tab để hoàn tất phiên trong nhật ký; nếu tab tắt đột ngột, phiên cũ sẽ được thu hồi khi mở phiên mới sau 45 giây không có frame. Camera trình duyệt cần `localhost` hoặc HTTPS.
 - `n` là **số người đang quan sát trong khung**, không phải danh tính thành viên gia đình. Khi thấy `n+1` người liên tục ít nhất 3 giây, hệ thống báo `unexpected_person`. Người bị che khuất, ra/vào khung hoặc track ID đổi có thể làm sai số đếm.
 - Quy tắc té ngã yêu cầu chuyển tư thế/độ cao qua thời gian; nằm lâu là tín hiệu riêng. Lửa/khói cần nhiều quan sát cùng vị trí; sự kiện cùng loại có cooldown 15 giây để tránh báo dồn. Không có cảnh báo **không** có nghĩa là an toàn.
+
+## Khuôn mặt trong video và webcam
+
+Chạy `python -m scripts.download_face_models` bằng Python của `.venv` trước khi bật tính năng. Script tải hai file ONNX đã ghim commit và SHA256 từ [OpenCV Zoo](https://github.com/opencv/opencv_zoo): YuNet để tìm mặt, SFace để so đặc trưng. Không cài thêm thư viện hay đưa ảnh lên dịch vụ bên ngoài. Sau khi tải, khởi động lại LH25.
+
+- **Video:** bật **Lưu ảnh đại diện và gom khuôn mặt trùng nhau trong video** khi tạo tác vụ. Góc phải trang chi tiết video hiển thị ảnh, số thứ tự và thời điểm xuất hiện đầu tiên của từng khuôn mặt. Video đã xử lý trước khi bật tính năng cần phân tích lại.
+- **Webcam:** bật **Lưu khuôn mặt... theo ngày** trước khi mở camera. Góc phải hiển thị số khuôn mặt khác nhau trong ngày; trang **Khuôn mặt theo ngày** cho phép mở lại từng ngày. Dừng và bật lại camera trong cùng ngày vẫn dùng chung danh sách; sang ngày mới bắt đầu danh sách mới theo múi giờ của máy.
+- Ảnh đại diện nằm ở `runtime/faces/`, đặc trưng nhận dạng ở `runtime/schoolguard.sqlite3`; cả hai bị loại khỏi Git. Chỉ tài khoản đã đăng nhập mới xem được. Ảnh khuôn mặt trong thư viện không được gửi Telegram. Tính năng này không tương thích với tùy chọn **Che mờ người** của video.
+
+Đây là **gom nhóm khuôn mặt ẩn danh**, chưa gán tên hay xác minh danh tính. Mặt mờ, nhỏ, khuất, nghiêng hoặc xuất hiện giữa hai lần lấy mẫu có thể bị bỏ sót; cùng một người có thể thành hai mục, hai người có thể bị gộp. Số liệu là ước tính, không dùng để kết luận chính xác có bao nhiêu người trong nhà. Model lấy mẫu tối đa mỗi 0,5 giây trên video và mỗi 1 giây trên webcam.
 
 ## Dữ liệu, kiểm thử và giới hạn
 

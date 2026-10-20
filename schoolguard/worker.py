@@ -13,6 +13,7 @@ import numpy as np
 from .behavior import BehaviorEngine
 from .db import now
 from .detector import PersonDetector
+from .faces import FaceLedger, FaceRecognizer, draw_faces
 from .fire import FireDetector, FireEngine, draw_hazards
 from .media import Reader, jpeg
 from .rules import ZoneEngine
@@ -161,10 +162,11 @@ class Cancelled(Exception):
 
 class Worker:
     def __init__(self, db, settings, detector_factory=PersonDetector, fire_factory=FireDetector,
-                 notifier=None):
+                 notifier=None, face_factory=FaceRecognizer):
         self.db, self.settings = db, settings
         self.detector_factory = detector_factory
         self.fire_factory = fire_factory
+        self.face_factory = face_factory
         self.notifier = notifier or TelegramNotifier()
         self.stop = threading.Event()
         self.wake = threading.Event()
@@ -226,6 +228,10 @@ class Worker:
                 self.db.execute("UPDATE jobs SET total_frames=? WHERE id=?", (total, ident))
                 detector = self.detector_factory(self.settings, config)
                 fire_detector = self.fire_factory(self.settings) if config.detect_fire else None
+                face_ledger = (FaceLedger(self.db, self.settings.runtime, "video", ident,
+                                          self.face_factory(self.settings))
+                               if config.recognize_faces else None)
+                last_face_time = -10.0
                 fire_engine = FireEngine()
                 fire_ms = []
                 last_fire_time = -10.0
@@ -252,6 +258,7 @@ class Worker:
                         stamp = index / reader.fps
                         new_alerts = []
                         fire_sampled = False
+                        face_result = {"visible": [], "total": 0}
                         if index % config.stride == 0:
                             t = time.perf_counter()
                             detections = detector(frame)
@@ -281,8 +288,13 @@ class Worker:
                                 + "\n"
                             )
                         # Skipped frames do not display stale boxes or claim fresh detections.
+                        if face_ledger and stamp - last_face_time >= 0.5 - 1e-9:
+                            face_result = face_ledger.update(frame, stamp)
+                            last_face_time = stamp
                         shown = detections if index % config.stride == 0 else []
                         annotated = draw(frame, shown, config.zones, active, config.redact)
+                        if face_result["visible"]:
+                            draw_faces(annotated, face_result["visible"])
                         if fire_sampled:
                             draw_hazards(annotated, hazards)
                         if config.redact and not shown and index % config.stride:
@@ -387,6 +399,7 @@ class Worker:
                     "behavior_rules": "lh25-home-v1-experimental",
                     "fire_checkpoint_sha256": getattr(fire_detector, "checkpoint_sha256", None),
                     "fire_inferred_frames": len(fire_ms),
+                    "unique_faces": len(face_ledger.records) if face_ledger else None,
                     "preview_write_retries": preview_failures,
                     "fire_mean_ms": round(float(np.mean(fire_ms)), 2) if fire_ms else None,
                 }

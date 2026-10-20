@@ -77,6 +77,7 @@ class JobRequest(BaseModel):
     detect_falls: bool = False
     detect_interactions: bool = False
     detect_fire: bool = False
+    recognize_faces: bool = False
     lying_seconds: float = Field(default=8, ge=2, le=120)
     crowd_threshold: int = Field(default=0, ge=0, le=200, strict=True)
     crowd_seconds: float = Field(default=3, ge=1, le=60)
@@ -87,6 +88,8 @@ class JobRequest(BaseModel):
     def require_pose(self):
         if (self.detect_falls or self.detect_interactions) and self.model != "yolo11n-pose":
             raise ValueError("Cảnh báo tư thế cần chọn model YOLO11n-pose.")
+        if self.recognize_faces and self.redact:
+            raise ValueError("Không thể vừa che mờ người vừa lưu ảnh khuôn mặt.")
         return self
 
 
