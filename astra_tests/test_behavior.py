@@ -144,6 +144,7 @@ def test_rapid_body_collapse_requires_multiple_observations():
     e = engine(detect_falls=True)
     e.update([person()], 0)
     down = person(True)
+    down["bbox"][3] = 0.98
     assert not e.update([down], 0.1)
     assert not e.update([down], 0.2)
     alerts = e.update([down], 0.3)
@@ -167,3 +168,44 @@ def test_short_rapid_collapse_emits_before_track_is_lost():
     alerts = e.update([down], 0.15)
     assert [a["event_type"] for a in alerts] == ["suspected_fall"]
     assert not e.update([], 0.2)
+
+
+def test_descent_keeps_stable_standing_reference_through_brief_pose_loss():
+    e = engine(detect_falls=True)
+    alerts = []
+    for n in range(31):
+        stamp = n / 30
+        d = person()
+        progress = max(0.0, min(1.0, (stamp - 0.25) / 0.55))
+        d["bbox"] = [0.25, 0.1 + 0.5 * progress, 0.55, 0.99]
+        for k in (5, 6, 11, 12):
+            d["keypoints"][k][1] += 0.42 * progress
+        if n == 24:
+            d["keypoints"][5][2] = 0.1
+        if n >= 25:
+            d["keypoints"][5][0] = 0.15
+            d["keypoints"][6][0] = 0.3
+            d["keypoints"][11][0] = 0.55
+            d["keypoints"][12][0] = 0.7
+        alerts.extend(e.update([d], stamp))
+    assert [a["event_type"] for a in alerts] == ["suspected_fall"]
+    assert alerts[0]["severity"] == "urgent"
+
+
+def test_sitting_above_floor_does_not_raise_red_fall_alert():
+    e = engine(detect_falls=True)
+    alerts = []
+    for n in range(31):
+        stamp = n / 30
+        d = person()
+        progress = max(0.0, min(1.0, (stamp - 0.25) / 0.55))
+        d["bbox"] = [0.25, 0.2 + 0.33 * progress, 0.55, 0.84]
+        for k in (5, 6, 11, 12):
+            d["keypoints"][k][1] += 0.25 * progress
+        if n >= 25:
+            d["keypoints"][5][0] = 0.15
+            d["keypoints"][6][0] = 0.3
+            d["keypoints"][11][0] = 0.55
+            d["keypoints"][12][0] = 0.7
+        alerts.extend(e.update([d], stamp))
+    assert not [a for a in alerts if a["event_type"] == "suspected_fall"]

@@ -53,8 +53,8 @@ Không dán token vào issue, commit, ảnh màn hình hoặc chat. Nếu lộ t
 
 Chạy `python -m scripts.download_face_models` bằng Python của `.venv` trước khi bật tính năng. Script tải hai file ONNX đã ghim commit và SHA256 từ [OpenCV Zoo](https://github.com/opencv/opencv_zoo): YuNet để tìm mặt, SFace để so đặc trưng. Không cài thêm thư viện hay đưa ảnh lên dịch vụ bên ngoài. Sau khi tải, khởi động lại LH25.
 
-- **Video:** bật **Lưu ảnh đại diện và gom khuôn mặt trùng nhau trong video** khi tạo tác vụ. Góc phải trang chi tiết video hiển thị ảnh, số thứ tự và thời điểm xuất hiện đầu tiên của từng khuôn mặt. Video đã xử lý trước khi bật tính năng cần phân tích lại.
-- **Webcam:** bật **Lưu khuôn mặt... theo ngày** trước khi mở camera. Góc phải hiển thị số khuôn mặt khác nhau trong ngày; trang **Khuôn mặt theo ngày** cho phép mở lại từng ngày. Dừng và bật lại camera trong cùng ngày vẫn dùng chung danh sách; sang ngày mới bắt đầu danh sách mới theo múi giờ của máy.
+- **Video:** bật **Lưu ảnh đại diện và gom khuôn mặt trùng nhau trong video** khi tạo tác vụ. Ở **Tác vụ xử lý**, mở video vừa phân tích: cột cạnh trình phát hiển thị tổng số, ảnh, số thứ tự và thời điểm xuất hiện đầu tiên của từng khuôn mặt. Tác vụ cũ chưa bật tính năng cần chạy lại. Clip có người nhưng không thấy rõ mặt vẫn có thể có kết quả bằng 0.
+- **Webcam:** bật **Lưu khuôn mặt... theo ngày** trước khi mở camera. Ngay trong **Webcam trực tiếp**, góc phải hiển thị mặt đã lưu hôm nay, bên dưới có lịch sử chọn ngày và ảnh từng khuôn mặt. Có thể xem lịch sử ngay cả khi camera đã tắt. Dừng và bật lại camera trong cùng ngày vẫn dùng chung danh sách; sang ngày mới bắt đầu danh sách mới theo múi giờ của máy.
 - Ảnh đại diện nằm ở `runtime/faces/`, đặc trưng nhận dạng ở `runtime/schoolguard.sqlite3`; cả hai bị loại khỏi Git. Chỉ tài khoản đã đăng nhập mới xem được. Ảnh khuôn mặt trong thư viện không được gửi Telegram. Tính năng này không tương thích với tùy chọn **Che mờ người** của video.
 
 Đây là **gom nhóm khuôn mặt ẩn danh**, chưa gán tên hay xác minh danh tính. Mặt mờ, nhỏ, khuất, nghiêng hoặc xuất hiện giữa hai lần lấy mẫu có thể bị bỏ sót; cùng một người có thể thành hai mục, hai người có thể bị gộp. Số liệu là ước tính, không dùng để kết luận chính xác có bao nhiêu người trong nhà. Model lấy mẫu tối đa mỗi 0,5 giây trên video và mỗi 1 giây trên webcam.
@@ -68,7 +68,7 @@ Các script tải dữ liệu chỉ lấy mẫu có nguồn gốc rõ và giữ 
 ```powershell
 .\.venv\Scripts\python.exe -m scripts.prepare_event_data
 .\.venv\Scripts\python.exe -m scripts.prepare_home_fire_eval
-.\.venv\Scripts\python.exe -m scripts.smoke_home runtime\event-data\urfd\fall-02-cam0-rgb.mp4 --falls
+.\.venv\Scripts\python.exe -m scripts.smoke_home runtime\event-data\urfd\fall-02-cam0-rgb.mp4 --falls --faces
 .\.venv\Scripts\python.exe -m scripts.smoke_home runtime\event-data\furg\house6.mp4 --fire --seconds 8
 .\.venv\Scripts\python.exe -m pytest tests ai-service\tests test_api_be2.py --basetemp runtime\pytest-legacy
 .\.venv\Scripts\python.exe -m pytest astra_tests --basetemp runtime\pytest-lh25
@@ -77,7 +77,7 @@ node --check schoolguard\static\app.js
 
 Nguồn bổ sung: [UR Fall Detection](https://fenix.ur.edu.pl/~mkepski/ds/uf.html) (fall/ADL, nghiên cứu phi thương mại), [AIRTLab](https://github.com/airtlab/A-Dataset-for-Automatic-Violence-Detection-in-Videos) (hành vi dàn dựng), [Fire-Detection example](https://github.com/pedbrgs/Fire-Detection), [FURG fire dataset](https://github.com/steffensbola/furg-fire-dataset) (CC0, video mô hình nhà/bối cảnh ngoài trời và XML annotation). Không huấn luyện trên clip rồi báo cáo chính clip đó là test độc lập; chia theo cảnh/camera/người, không chia ngẫu nhiên frame liền kề. `scripts/prepare_home_fire_eval.py` ghim commit và lưu SHA256. [FIRESENSE](https://zenodo.org/records/836749) và [Indoor Fire and Smoke dataset](https://huggingface.co/datasets/shahriar-5/IFireSmoke) là ứng viên đánh giá sau; bản Indoor FS hiện yêu cầu quyền truy cập, nên chưa tải tự động.
 
-Smoke test thực trên máy CPU: sau khi giảm cửa sổ xác nhận chuyển động nhanh từ 0,2 xuống 0,1 giây, replay detections bắt được `fall-01` và `fall-02`, còn `fall-03` vẫn bị bỏ sót; cả 3 clip `adl-01/02/03` không báo ngã. Clip `wildfire.mp4` có 1 cảnh báo khói. `house6.mp4` (video mô hình nhà, không phải cháy thật trong phòng) nhận khói trong 8 giây đầu, nhưng nhãn loại có thể sai. Cần thêm clip indoor thực, đối chứng cảnh sinh hoạt bình thường và đánh giá false alerts/giờ trước khi dùng như hệ thống cảnh báo chính. Các clip URFD này là smoke test phát triển, **không** phải bộ test độc lập đủ lớn để tuyên bố độ chính xác.
+Smoke test thực trên máy CPU: sau khi giữ mốc tư thế đứng ổn định qua giai đoạn hạ người và mất pose ngắn, replay dữ liệu đã lưu bắt được `fall-01/02/03` (mỗi clip một cảnh báo nghi ngã); `adl-01/02/03` không báo ngã. Chạy lại pipeline thật với `fall-03-cam0-rgb.mp4 --falls --faces` hoàn tất 215 frame, tạo một cảnh báo khẩn ở 6,1 giây và lưu một khuôn mặt xuất hiện trong 7 lần lấy mẫu; xử lý 7,17 giây video mất 52,4 giây trên CPU lần thử này. Clip `wildfire.mp4` có 1 cảnh báo khói. `house6.mp4` (video mô hình nhà, không phải cháy thật trong phòng) nhận khói trong 8 giây đầu, nhưng nhãn loại có thể sai. Cần thêm clip indoor thực, đối chứng cảnh sinh hoạt bình thường và đánh giá false alerts/giờ trước khi dùng như hệ thống cảnh báo chính. Các clip URFD này là smoke test phát triển, **không** phải bộ test độc lập đủ lớn để tuyên bố độ chính xác.
 
 ## Hướng phát triển hợp lý
 

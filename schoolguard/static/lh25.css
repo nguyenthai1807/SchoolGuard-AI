@@ -94,7 +94,14 @@ legend { color: var(--mint); font-weight: 700; padding: 0 7px; }
 .camera-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .camera-alerts { max-height: 260px; overflow: auto; }
 .camera-alerts li { margin: 8px 0; }
+.camera-alerts .urgent-item, .timeline .urgent-item { border-color: #e55c60; color: #ffe3e1; background: #4b202b; }
+.red-alarm { display: flex; flex-direction: column; gap: 6px; margin: 0 0 20px; padding: 17px 20px; border: 2px solid #ef6565; border-left: 7px solid #ff5c5c; border-radius: 11px; background: #4b202b; color: #fff1ec; box-shadow: 0 0 30px #a7373755; }
+.red-alarm[hidden] { display: none; }
+.red-alarm strong { font-size: 17px; letter-spacing: .035em; }
+.urgent-card { border-color: #b54f54; box-shadow: 0 0 0 1px #8f3e46, 0 12px 30px #020e181e; }
+.red-alert-label { color: #ffb8b6; font-size: 11px; font-weight: 800; letter-spacing: .1em; margin-bottom: 12px; }
 .job-faces { margin-top: 14px; }
+.job-layout .job-faces { margin-top: 0; }
 .face-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 12px; }
 .face-card { min-width: 0; overflow: hidden; border: 1px solid #36566a; border-radius: 12px; background: #0b1b29; }
 .face-card img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; }
@@ -103,8 +110,10 @@ legend { color: var(--mint); font-weight: 700; padding: 0 7px; }
 .face-card small { display: block; margin-top: 3px; font-size: 10px; line-height: 1.4; }
 .face-history { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: 20px; align-items: start; }
 .face-day { display: flex; justify-content: space-between; gap: 10px; padding: 11px; margin: 5px 0; border: 1px solid #36566a; border-radius: 9px; }
+.face-day { width: 100%; text-align: left; font-size: 13px; color: #e3f1f0; background: #0c2230; }
 .face-day.active { background: #173f3e; border-color: #5bc6b6; }
 .face-history .face-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+#camera-history { margin-top: 20px; }
 @media(max-width:1100px) { .camera-layout { grid-template-columns: 1fr; } .login { gap: 25px; } }
 @media(max-width:800px) { .face-history { grid-template-columns: 1fr; } }
 @media(max-width:800px) { aside { position: static; width: auto; padding: 15px; } .brand { display: none; } .nav-label, .aside-bottom { display: none; } nav { display: flex; overflow-x: auto; } nav a { white-space: nowrap; } main { margin: 0; padding: 22px; } .login { grid-template-columns: 1fr; } .login-intro { gap: 24px; } .intro-brand { display: none; } .login-intro h1 { font-size: 42px; } .login-card { max-width: none; } .metrics { grid-template-columns: repeat(2, 1fr); } }

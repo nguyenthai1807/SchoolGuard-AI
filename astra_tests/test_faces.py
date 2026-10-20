@@ -116,3 +116,32 @@ def test_face_capture_conflicts_with_redaction():
         pass
     else:
         raise AssertionError("redacted jobs must not store unblurred face crops")
+
+
+def test_tiny_face_stays_one_person_when_embedding_changes_between_frames(tmp_path):
+    from schoolguard.db import Database, now
+    from schoolguard.faces import FaceLedger
+
+    samples = [
+        ([0.45, 0.1, 0.51, 0.2], [1.0, 0.0]),
+        ([0.47, 0.1, 0.53, 0.2], [0.38, 0.925]),
+        ([0.8, 0.1, 0.86, 0.2], [-0.5, 0.866]),
+    ]
+
+    def recognize(_frame):
+        box, vector = samples.pop(0)
+        feature = np.array(vector, dtype=np.float32)
+        feature /= np.linalg.norm(feature)
+        return [{"bbox": box, "confidence": 0.91,
+                 "embedding": feature, "image": b"jpeg"}]
+
+    db = Database(tmp_path / "faces.sqlite3")
+    db.execute("INSERT INTO users(id,username,password,role) VALUES(1,'test','test','admin')")
+    db.execute("INSERT INTO sources(id,name,path,kind,split) VALUES('source','test','x','video','test')")
+    db.execute("INSERT INTO jobs(id,source_id,status,created_at,config,user_id) "
+               "VALUES('test-video','source','running',?,'{}',1)", (now(),))
+    ledger = FaceLedger(db, tmp_path, "video", "test-video", recognize)
+    frame = np.zeros((120, 160, 3), dtype=np.uint8)
+    assert ledger.update(frame, 0.0)["total"] == 1
+    assert ledger.update(frame, 0.5)["total"] == 1
+    assert ledger.update(frame, 1.0)["total"] == 2

@@ -23,6 +23,7 @@ def main():
     parser.add_argument("--seconds", type=float, default=0)
     parser.add_argument("--fire", action="store_true")
     parser.add_argument("--falls", action="store_true")
+    parser.add_argument("--faces", action="store_true")
     parser.add_argument("--expected-people", type=int, default=1)
     args = parser.parse_args()
     video = args.video.resolve()
@@ -37,7 +38,7 @@ def main():
     ident = uuid.uuid4().hex
     config = JobRequest(
         source_id=ident, camera_name=video.stem[:80], model="yolo11n-pose",
-        detect_falls=args.falls, detect_fire=args.fire,
+        detect_falls=args.falls, detect_fire=args.fire, recognize_faces=args.faces,
         expected_people=args.expected_people, max_seconds=args.seconds,
     )
     db.execute("INSERT INTO sources VALUES(?,?,?,?,?)",

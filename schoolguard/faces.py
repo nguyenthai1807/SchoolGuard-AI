@@ -9,7 +9,6 @@ import numpy as np
 
 from .db import now
 
-
 FACE_MODELS = ("face_detection_yunet_2026may.onnx", "face_recognition_sface_2021dec.onnx")
 MATCH_THRESHOLD = 0.45  # Conservative relative to OpenCV Zoo's 0.363 demo threshold.
 
@@ -36,8 +35,13 @@ class FaceRecognizer:
 
     def __call__(self, frame):
         height, width = frame.shape[:2]
-        scale = min(1.0, 960 / max(width, height))
-        sample = cv2.resize(frame, None, fx=scale, fy=scale) if scale < 1 else frame
+        # Small research clips often contain 15-25 px faces. Upscaling helps
+        # YuNet see them, though it cannot recover detail absent in the video.
+        scale = min(3.0, 960 / max(width, height))
+        sample = (cv2.resize(frame, None, fx=scale, fy=scale,
+                             interpolation=cv2.INTER_CUBIC if scale > 1 else cv2.INTER_AREA)
+                  if abs(scale - 1) > 1e-6 else frame)
+        height, width = sample.shape[:2]
         self.detector.setInputSize((sample.shape[1], sample.shape[0]))
         _, found = self.detector.detect(sample)
         observations = []
@@ -45,7 +49,6 @@ class FaceRecognizer:
             return observations
         for raw in found[:30]:
             face = raw.astype(np.float32).copy()
-            face[:14] /= scale
             x, y, w, h = face[:4]
             if w < 32 or h < 32:
                 continue
@@ -53,14 +56,14 @@ class FaceRecognizer:
             x2, y2 = min(width, int(x + w)), min(height, int(y + h))
             if x2 - x1 < 24 or y2 - y1 < 24:
                 continue
-            aligned = self.recognizer.alignCrop(frame, face)
+            aligned = self.recognizer.alignCrop(sample, face)
             feature = self.recognizer.feature(aligned).reshape(-1).astype(np.float32)
             norm = float(np.linalg.norm(feature))
             if not np.isfinite(norm) or norm < 1e-8:
                 continue
             feature /= norm
             pad = int(max(w, h) * 0.16)
-            crop = frame[max(0, y1-pad):min(height, y2+pad), max(0, x1-pad):min(width, x2+pad)]
+            crop = sample[max(0, y1-pad):min(height, y2+pad), max(0, x1-pad):min(width, x2+pad)]
             crop = cv2.resize(crop, (160, 160), interpolation=cv2.INTER_AREA)
             ok, encoded = cv2.imencode(".jpg", crop, [cv2.IMWRITE_JPEG_QUALITY, 88])
             if not ok:
@@ -97,7 +100,8 @@ class FaceLedger:
             if feature.size and np.isfinite(feature).all():
                 self.records[row["id"]] = {
                     "ordinal": row["ordinal"], "embedding": feature,
-                    "seen_count": row["seen_count"],
+                    "seen_count": row["seen_count"], "last_bbox": None,
+                    "last_time": None,
                 }
 
     def update(self, frame, video_time):
@@ -113,6 +117,27 @@ class FaceLedger:
             ]
             score, ident = max(candidates, default=(-1.0, None))
             if score < MATCH_THRESHOLD:
+                # Tiny faces can have noisy embeddings. Within a continuous
+                # clip, a nearby face in the next sampled frame is stronger
+                # evidence than a second anonymous identity.
+                box = item["bbox"]
+                center = ((box[0] + box[2]) / 2, (box[1] + box[3]) / 2)
+                nearby = []
+                if box[2] - box[0] < 0.12:
+                    for candidate_score, candidate_id in candidates:
+                        record = self.records[candidate_id]
+                        previous, last = record["last_bbox"], record["last_time"]
+                        if previous is None or last is None or not 0 <= video_time - last <= 0.75:
+                            continue
+                        prior = ((previous[0] + previous[2]) / 2,
+                                 (previous[1] + previous[3]) / 2)
+                        distance = float(np.hypot(center[0] - prior[0], center[1] - prior[1]))
+                        if candidate_score >= 0.2 and distance <= 0.15:
+                            nearby.append((candidate_score - distance, candidate_id))
+                if nearby:
+                    _, ident = max(nearby)
+                    score = MATCH_THRESHOLD
+            if score < MATCH_THRESHOLD:
                 ident = uuid.uuid4().hex
                 ordinal = max((r["ordinal"] for r in self.records.values()), default=0) + 1
                 filename = ident + ".jpg"
@@ -127,7 +152,8 @@ class FaceLedger:
                      sqlite3.Binary(item["embedding"].tobytes()), filename),
                 )
                 self.records[ident] = {"ordinal": ordinal,
-                                       "embedding": item["embedding"].copy(), "seen_count": 1}
+                                       "embedding": item["embedding"].copy(), "seen_count": 1,
+                                       "last_bbox": item["bbox"], "last_time": video_time}
             else:
                 record = self.records[ident]
                 weight = min(record["seen_count"], 20)
@@ -135,6 +161,8 @@ class FaceLedger:
                 averaged /= max(float(np.linalg.norm(averaged)), 1e-8)
                 record["embedding"] = averaged
                 record["seen_count"] += 1
+                record["last_bbox"] = item["bbox"]
+                record["last_time"] = video_time
                 self.db.execute(
                     "UPDATE faces SET last_seen=?,seen_count=?,embedding=? WHERE id=?",
                     (now(), record["seen_count"], sqlite3.Binary(averaged.tobytes()), ident),

@@ -66,6 +66,7 @@ class BehaviorEngine:
         self.episodes = {}
         self.upright = {}
         self.previous = {}
+        self.last_valid = {}
         self.fall_sent = set()
         self.pair_history = {}
         self.pair_alert_time = {}
@@ -126,27 +127,39 @@ class BehaviorEngine:
         if self.config.detect_falls:
             for track, p in valid.items():
                 d = people[track]
-                prev = self.previous.get(track)
-                if prev is None or timestamp - prev[0] > self.max_gap:
+                if timestamp - self.last_valid.get(track, -100) > self.max_gap:
                     self.upright.pop(track, None)
+                self.last_valid[track] = timestamp
                 if p["upright"]:
-                    self.upright[track] = (
-                        timestamp,
-                        p["center"][1],
-                        p["length"],
-                        d["bbox"][3] - d["bbox"][1],
+                    standing = self.upright.get(track)
+                    box_height = d["bbox"][3] - d["bbox"][1]
+                    # Keep the last stable standing reference while a person
+                    # descends. Pose can remain "upright" through most of a fall.
+                    descending = standing and (
+                        p["center"][1] > standing[1] + standing[2] * 0.18
+                        or box_height < standing[3] * 0.85
                     )
-                    self.fall_sent.discard(track)
+                    if not descending and (standing is None or timestamp - standing[0] >= 0.5):
+                        self.upright[track] = (
+                            timestamp, p["center"][1], p["length"], box_height,
+                            d["bbox"][3],
+                        )
+                        self.fall_sent.discard(track)
                 old = self.upright.get(track)
                 elapsed = timestamp - old[0] if old else 0
                 drop = (p["center"][1] - old[1]) / old[2] if old else 0
+                box_height = d["bbox"][3] - d["bbox"][1]
+                near_floor = old and (
+                    d["bbox"][3] >= 0.9 or d["bbox"][3] - old[4] >= 0.12
+                )
                 rapid = (
                     old
                     and not p["upright"]
-                    and 0 < elapsed <= 1.2
-                    and drop > 0.8
-                    and drop / elapsed > 1.2
-                    and d["bbox"][3] - d["bbox"][1] < old[3] * 0.85
+                    and 0 < elapsed <= 1.5
+                    and drop > 0.65
+                    and drop / elapsed > 0.7
+                    and box_height < old[3] * 0.75
+                    and near_floor
                 )
                 if rapid and track not in self.fall_sent:
                     consider(
@@ -306,5 +319,9 @@ class BehaviorEngine:
                     )
                 )
         self.episodes = {k: v for k, v in self.episodes.items() if k in seen}
+        self.last_valid = {
+            k: v for k, v in self.last_valid.items()
+            if k in people and timestamp - v <= self.max_gap
+        }
         self.previous = {k: (timestamp, d) for k, d in people.items() if k in valid}
         return alerts
