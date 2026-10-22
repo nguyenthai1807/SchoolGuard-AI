@@ -1,0 +1,85 @@
+{
+  "reviewer": "assistant visual review",
+  "scope": "physical person boxes only; other COCO classes provisional",
+  "source": "https://drive.google.com/drive/folders/11GtmyFtbIyrSj8snptr4I5S5WxOFCTMt",
+  "items": [
+    {
+      "name": "scene07-0",
+      "image_sha256": "a87335716e815369cc5428a5e72989abfe3ce5dbdc83bcf459739398f8fa1432",
+      "proposed_labels_sha256": "6113def8993c2fd7934c37ae6d01295d5595bae324dd23696b8b7c87d572524c",
+      "remove_rows": []
+    },
+    {
+      "name": "scene07-1",
+      "image_sha256": "ec9f309fe7e49243a24139628d4da4a14215d62086b1be6939773dd4598c9aea",
+      "proposed_labels_sha256": "69f728c1426ebe788ae3961f9dbb7dcdc7968aeebb68f116fb5500767cb1602c",
+      "remove_rows": []
+    },
+    {
+      "name": "scene07-2",
+      "image_sha256": "99be102d5cf3de982e06ec467d6e1743cc1e6e8dd0948202194ddd446158d0e7",
+      "proposed_labels_sha256": "4e5243a11b1fdf29bcd26411684a6846efca057ae7da7e66170ca197c82e468c",
+      "remove_rows": []
+    },
+    {
+      "name": "scene09-0",
+      "image_sha256": "18710797775b5b4f43b5d1ad942696c737c6fe30c74f59e7dd75567f4e3fe0c0",
+      "proposed_labels_sha256": "ad1bc355e46b12ad564f3fc04050e1a3146ce0aff3b27474397d163c3ff819aa",
+      "remove_rows": [
+        3,
+        4
+      ]
+    },
+    {
+      "name": "scene09-1",
+      "image_sha256": "766c2dab8ec39dd593b5ece35b080159fd9d54e44d65431d6e39c8dd53c1437e",
+      "proposed_labels_sha256": "f59aa52fc095ef594341cc24e53c26b071ebbfb711dfb330279efdba7f42e438",
+      "remove_rows": [
+        2,
+        5
+      ]
+    },
+    {
+      "name": "scene09-2",
+      "image_sha256": "5f0416bb56cc6d1d2ca6e7d667d968382e85f0562d04544e63827b5ae47e5f43",
+      "proposed_labels_sha256": "85a9837f8133b94ad21e70122f77a5ce36e76d7ee63e832e883d9e7877380c06",
+      "remove_rows": []
+    },
+    {
+      "name": "scene12-0",
+      "image_sha256": "4cf86dfa66724d2cca400e4789dfe261e0d72233197e12643237c720167c5cb5",
+      "proposed_labels_sha256": "306773beb692dc9c46a31664d5cfcc9fcfd35f3b9acdadfabeb064ab92c3bfeb",
+      "remove_rows": [
+        4
+      ]
+    },
+    {
+      "name": "scene12-1",
+      "image_sha256": "91314dce45feb72f5d4f748e5a469e070ddf9de187ac960fd0ba03428e46b355",
+      "proposed_labels_sha256": "42d934929326a2be9eafcc866b17469b9ef952a7fe4c5dcc0e7fdc3c44610504",
+      "remove_rows": []
+    },
+    {
+      "name": "scene12-2",
+      "image_sha256": "84431128b2f94dbe022c47f23d5dd6d382fc7b825e98fe2e15d83f437e7cd610",
+      "proposed_labels_sha256": "0ea79838f89a5a29b75000bec2361d6d6ae9b4b4cf8b2bad30f7498b931f5194",
+      "remove_rows": []
+    }
+  ],
+  "notes": {
+    "removed_original_rows": {
+      "scene09-0": [
+        3,
+        4
+      ],
+      "scene09-1": [
+        2,
+        5
+      ],
+      "scene12-0": [
+        4
+      ]
+    },
+    "policy": "Count visible physical people, including clipped/partly occluded bodies; exclude mirror reflections and duplicate union boxes. Other object labels remain provisional."
+  }
+}

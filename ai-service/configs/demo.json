@@ -1,0 +1,19 @@
+{
+  "camera_id": "CAM-01",
+  "model": "yolov8n.pt",
+  "confidence": 0.35,
+  "image_size": 640,
+  "frame_stride": 1,
+  "device": "cpu",
+  "anchor": "center",
+  "dwell_seconds": 2.0,
+  "missing_grace_seconds": 0.5,
+  "redact_people": true,
+  "zones": [
+    {
+      "zone_id": "ZONE-01",
+      "name": "Khu vực cấm demo (nửa phải khung hình)",
+      "polygon": [[0.5, 0.0], [1.0, 0.0], [1.0, 1.0], [0.5, 1.0]]
+    }
+  ]
+}
