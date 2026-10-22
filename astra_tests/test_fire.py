@@ -90,3 +90,33 @@ def test_small_frame_uses_single_fire_pass():
     detector.infer = lambda frame: calls.append(frame.shape) or []
     assert detector(np.zeros((240, 320, 3), dtype=np.uint8)) == []
     assert len(calls) == 1
+
+
+def test_hair_smoke_does_not_confirm_even_when_persistent():
+    from schoolguard.fire import filter_hazards
+    person = {"bbox": [.2, .1, .8, .9]}
+    hair = {"kind": "smoke", "confidence": .98, "bbox": [.35, .1, .65, .28]}
+    engine = FireEngine(smoke_dwell=4)
+    for t in range(20):
+        assert engine.update(filter_hazards([hair], [person]), t*.5) == []
+        assert engine.confirmed == []
+
+
+def test_smoke_outside_head_needs_four_seconds_and_resets_on_absence():
+    from schoolguard.fire import filter_hazards
+    smoke = hazard(kind="smoke")
+    engine = FireEngine(smoke_dwell=4)
+    for t in range(8):
+        assert engine.update(filter_hazards([smoke], []), t*.5) == []
+        assert engine.confirmed == []
+    assert len(engine.update([smoke], 4)) == 1
+    assert len(engine.confirmed) == 1
+    engine.update([], 4.5)
+    assert engine.confirmed == []
+
+
+def test_fire_near_head_remains_eligible():
+    from schoolguard.fire import filter_hazards
+    smoke = hazard(kind="smoke")
+    assert len(filter_hazards([smoke, hazard()], [{"bbox": [0, 0, 1, 1]}])) == 2
+    assert filter_hazards([{**smoke, "confidence": .6}], []) == []

@@ -14,7 +14,7 @@ from .behavior import BehaviorEngine
 from .db import now
 from .detector import PersonDetector
 from .faces import FaceLedger, FaceRecognizer, draw_faces
-from .fire import FireDetector, FireEngine, draw_hazards
+from .fire import FireDetector, FireEngine, draw_hazards, filter_hazards
 from .media import Reader, jpeg
 from .rules import ZoneEngine
 from .schemas import JobRequest
@@ -232,7 +232,7 @@ class Worker:
                                           self.face_factory(self.settings))
                                if config.recognize_faces else None)
                 last_face_time = -10.0
-                fire_engine = FireEngine()
+                fire_engine = FireEngine(smoke_dwell=4.0)
                 fire_ms = []
                 last_fire_time = -10.0
                 hazards = []
@@ -267,9 +267,10 @@ class Worker:
                             new_alerts.extend(behavior.update(detections, stamp))
                             if fire_detector and stamp - last_fire_time >= 0.5 - 1e-9:
                                 fire_start = time.perf_counter()
-                                hazards = fire_detector(frame)
+                                hazards = filter_hazards(fire_detector(frame), detections)
                                 fire_ms.append((time.perf_counter() - fire_start) * 1000)
                                 new_alerts.extend(fire_engine.update(hazards, stamp))
+                                hazards = fire_engine.confirmed
                                 last_fire_time = stamp
                                 fire_sampled = True
                             active.update(a["track_id"] for a in new_alerts)

@@ -84,3 +84,44 @@ Smoke test thực trên máy CPU: sau khi giữ mốc tư thế đứng ổn đ�
 Ưu tiên tiếp theo: bộ test indoor fire thực có nhãn và cảnh âm tính khó (bếp nấu, đèn, ánh nắng), đo thời gian tới cảnh báo và false alerts/giờ; gắn nhãn riêng các kiểu ngã/ngồi nhanh để huấn luyện temporal classifier; chế độ giờ nhà vắng/giờ ngủ; phát hiện camera mất tín hiệu; tùy chọn nút xác nhận khẩn cấp và chuỗi liên hệ dự phòng khi Telegram lỗi. Mở rộng campus/multi-camera để sau khi bản tại nhà được đánh giá độc lập.
 
 Giấy phép: Ultralytics/weights có điều kiện [AGPL-3.0 hoặc Enterprise](https://www.ultralytics.com/license); model ONNX lửa/khói là thử nghiệm của [tác giả uploader](https://huggingface.co/fiacecson20/cctv-ai-fire-smoke). Kiểm tra quyền dùng dữ liệu/model trước khi phân phối hoặc thương mại hóa.
+
+
+### Webcam: ID và vật thể
+
+Webcam dùng ID ẩn danh liên tục trong mỗi phiên, ghép lại track bị đổi số khi vị trí còn khớp trong 2,5 giây và loại khung trùng gần như hoàn toàn. Số ID không phải danh tính người; mất dấu lâu hoặc che khuất vẫn có thể tạo số mới. Khuôn mặt có cửa sổ ghép phù hợp nhịp lấy mẫu webcam (tối đa 2,5 giây, cần khớp đặc trưng và vị trí).
+
+Mặc định dùng `yolo11s.pt` để đếm người. Bật **Phát hiện vật thể** để tìm thêm các lớp COCO như ô tô, xe máy, xe tải trong cùng một lượt suy luận. Khi bật cảnh báo tư thế, dùng Pose cho người và model riêng cho vật thể. Vật thể không cộng vào số người. Có thể chọn ảnh suy luận 640 (nhanh hơn) hoặc 960 (người ở xa, chi tiết hơn). Nguồn mạng mặc định 960, webcam máy tính 640. Cảnh báo tư thế mặc định tắt để ưu tiên đếm người/lưu mặt; bật lại khi cần.
+
+
+### Dùng camera điện thoại hoặc camera IP trên máy tính
+
+Trên trang **Webcam trực tiếp**, chọn **Nguồn hình ảnh → Điện thoại / camera IP qua mạng**. Điền URL luồng rồi bấm **Bật camera & phân tích**. Máy tính kết nối trực tiếp với thiết bị và thực hiện nhận diện, lưu mặt, cảnh báo như nguồn webcam.
+
+- Điện thoại: kết nối cùng Wi-Fi với máy tính, bật tính năng/app phát camera qua HTTP/MJPEG hoặc RTSP, rồi nhập đúng URL luồng do thiết bị cung cấp (ví dụ `http://192.168.1.20:8080/video`). Giữ ứng dụng phát camera mở.
+- Camera IP: bật RTSP trong cấu hình camera và lấy URL từ hướng dẫn của chính thiết bị (ví dụ `rtsp://192.168.1.30:554/stream1`). Có thể nhập tài khoản trong URL nếu camera yêu cầu. URL không được lưu trong cấu hình tác vụ hoặc phản hồi API.
+- Dùng địa chỉ IP riêng trong LAN, không nhập URL trang quản trị, đường dẫn tệp hoặc URL Internet. Máy tính phải truy cập được IP/cổng của thiết bị; Wi-Fi khách có thể chặn các thiết bị kết nối nhau.
+- Chế độ này không yêu cầu mở cổng web SchoolGuard ra mạng hoặc dùng webcam máy tính. Điện thoại mở trực tiếp trang SchoolGuard trong trình duyệt để phát camera chưa được hỗ trợ trong chế độ này; điện thoại cần phát luồng camera.
+- Hiện phân tích một nguồn trực tiếp mỗi lần; bấm **Dừng camera** để đổi thiết bị. Chỉ ảnh mặt và ảnh cảnh báo được lưu, không ghi video liên tục. Hình trực tiếp lấy ảnh mới nhất độc lập với AI, không xếp hàng khung hình. Mở **Kết quả AI** dưới hình để xem các khung nhận diện gắn với đúng ảnh đã phân tích; ảnh này cập nhật theo tốc độ AI.
+
+
+Điện thoại có thể chọn **Hướng hình** (giữ nguyên / xoay trái / xoay phải / 180°) và **Lật ngang như camera selfie** trước khi kết nối hoặc dùng nút xoay/lật dưới hình ngay trong phiên. Đổi hướng sẽ xóa liên kết vị trí cũ nhưng giữ thư viện mặt đã lưu. Phép xoay/lật áp dụng lên ảnh đầu vào AI nên ảnh mặt lưu, ảnh cảnh báo và khung nhận diện cùng hướng. Không tự suy ra tư thế cầm điện thoại khi luồng không truyền metadata xoay. Ảnh dọc giữ cạnh dài tối đa 1280 px; bộ đọc liên tục bỏ khung cũ, chỉ giữ ảnh mới nhất. Bộ tìm mặt thử thêm vùng đầu của tối đa hai người bị bỏ sót mỗi lượt, luân phiên giữa những người trong khung. Danh sách ảnh mặt tải riêng để không chặn vòng đọc camera.
+
+
+### Đếm cơ thể và huấn luyện từ video Drive
+
+Khung **xanh dương** là người, khung **cam** là vật thể. Số “Người đang thấy” chỉ đếm detection lớp person, độc lập với lưu mặt. Người đã được xác nhận vẫn được giữ khi có detection cơ thể thật với độ tin cậy giảm xuống một nửa ngưỡng ban đầu (tối thiểu 0,1), trong cửa sổ 2,5 giây. Không tạo thêm người từ vị trí dự đoán khi không còn detection; người bị che kín hoàn toàn không được tính như một quan sát chắc chắn.
+
+Đợt `phone-body-v2` dùng một clip đại diện của mỗi cảnh trong 13 cảnh ShanghaiTech từ thư mục Drive người dùng cung cấp. Train ở cảnh 1/2/3/5/6/10/13, validation ở 4/8/11, test ở 7/9/12. Có 114 ảnh train (gốc, crop bỏ đầu, che thân giả lập), 9 validation và 9 test. Nhãn train/validation chủ yếu do YOLO11s tạo; các nhãn người trên test được rà soát, loại phản chiếu kính và khung trùng. Đây là thử nghiệm nhỏ ngoài trời, chưa đại diện cho quán đông người.
+
+Các lệnh tái tạo, chạy từ thư mục dự án:
+
+```powershell
+.venv/Scripts/python.exe -m pip install -r requirements-training.txt
+.venv/Scripts/python.exe -m scripts.fetch_phone_training
+.venv/Scripts/python.exe -m scripts.prepare_phone_training
+.venv/Scripts/python.exe -m scripts.apply_phone_label_review
+.venv/Scripts/python.exe -m scripts.train_phone_people --epochs 6
+.venv/Scripts/python.exe -m scripts.evaluate_phone_body
+```
+
+Script giữ nguyên dataset/run đã tồn tại; không ghi đè trọng số model đang dùng. Bản rà soát trong `docs/phone-body-test-review.json` chỉ áp dụng nếu SHA256 ảnh và nhãn khớp. Checkpoint lưu ở `runtime/training-runs/phone-body-v2/weights/best.pt`; báo cáo ở `runtime/phone-training/report.json`. Trang **Dữ liệu & đánh giá** hiển thị tiến độ và so sánh với YOLO11s. Chỉ cân nhắc thay mặc định nếu precision/recall/F1, sai số đếm và độ trễ đạt điều kiện; đánh giá crop thân người được ghi riêng.

@@ -145,3 +145,19 @@ def test_failed_telegram_delivery_can_be_retried_once(tmp_path, monkeypatch):
         assert retry.json() == {"delivered": True, "telegram_status": "delivered"}
         assert client.post(f"/api/alerts/{alert['id']}/telegram").status_code == 409
         assert notifier.calls == 2
+
+
+def test_live_objects_do_not_inflate_people_or_occupancy():
+    config = JobRequest(source_id="live", expected_people=2, crowd_seconds=1)
+    def objects(_image):
+        return [{"track_id": 1, "class_id": 2, "label": "car",
+                 "confidence": .9, "bbox": [.3, .3, .6, .6]}]
+    times = iter([0, 0, 1.2])
+    analyzer = LiveAnalyzer(config, TwoPeople(None, None), object_detector=objects,
+                            clock=lambda: next(times))
+    analyzer.update(frame())
+    result = analyzer.update(frame())
+    assert result["people"] == 2
+    assert result["objects"] == 1
+    assert len({d["track_id"] for d in result["detections"]}) == 3
+    assert result["alerts"] == []

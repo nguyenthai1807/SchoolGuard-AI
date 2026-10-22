@@ -4,14 +4,21 @@ const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;',
 const labels = {completed:'Hoàn tất',running:'Đang xử lý',queued:'Đang chờ',failed:'Thất bại',cancelled:'Đã hủy',new:'Chưa duyệt',acknowledged:'Đã tiếp nhận',resolved:'Đã xử lý',false_positive:'Báo sai'};
 const badge = s => `<span class="badge ${esc(s)}">${esc(labels[s] || s)}</span>`;
 const fmt = n => Number(n || 0).toLocaleString('vi-VN', {maximumFractionDigits:2});
-let me, timer, routeVersion=0, toastTimer, cameraStream=null, cameraSession=null, cameraTimer=null;
+let me, timer, routeVersion=0, toastTimer, cameraStream=null, cameraSession=null, cameraTimer=null, cameraRemote=false;
+let previewTimer=null, previewRequest=null, previewUrl=null, cameraViewVersion=0;
+const cameraSessionKey='lh25-camera-session';
+window.addEventListener('pagehide',()=>{
+  const session=cameraSession||sessionStorage.getItem(cameraSessionKey);
+  if(session)navigator.sendBeacon('/api/live/'+encodeURIComponent(session)+'/stop');
+  if(cameraStream)cameraStream.getTracks().forEach(track=>track.stop());
+});
 let selectedSource=null, polygon=[], zones=[], baseImage=null, sourceOffset=0;
 async function api(path, options={}) {
   const response = await fetch('/api'+path, {credentials:'same-origin', ...options, headers:{...(options.body instanceof FormData ? {} : {'Content-Type':'application/json'}), ...options.headers}});
   if (!response.ok) {
     let detail; try { detail=(await response.json()).detail; } catch { detail=response.statusText; }
     if(response.status===401 && path!='/login') showLogin();
-    throw new Error(typeof detail==='string' ? detail : JSON.stringify(detail));
+    const error=new Error(typeof detail==='string' ? detail : JSON.stringify(detail));error.status=response.status;throw error;
   }
   return response.json();
 }
@@ -25,7 +32,7 @@ const titles={overview:'Tổng quan',library:'Phân tích video',camera:'Webcam 
 const trainingLink=document.createElement('a');trainingLink.href='#training';trainingLink.dataset.nav='training';trainingLink.textContent='Dữ liệu & đánh giá';document.querySelector('nav').insertBefore(trainingLink,document.querySelector('[data-nav="system"]'));
 async function renderRoute(){
   if(location.hash.startsWith('#faces')){location.hash='#camera';return;}
-  if(cameraStream && location.hash!=='#camera') await stopCamera();
+  if((cameraStream||cameraRemote) && location.hash!=='#camera') await stopCamera();
   clearTimeout(timer); const version=++routeVersion; const [page='overview',id]=location.hash.slice(1).split('/');
   $('#page-title').textContent=titles[page]||'Tổng quan'; document.querySelectorAll('[data-nav]').forEach(a=>a.classList.toggle('active',a.dataset.nav===(page==='job'?'jobs':page)));
   $('#content').innerHTML='<div class="empty">Đang tải…</div>';
@@ -38,14 +45,14 @@ async function allFaces(query){
 }
 function faceCards(items,live=false){
   if(!items.length)return '<div class="empty">Chưa nhận diện được khuôn mặt rõ trong khoảng này.</div>';
-  return `<div class="face-grid">${items.map(f=>`<article class="face-card"><img loading="lazy" src="/api/faces/${encodeURIComponent(f.id)}/image" alt="Ảnh đại diện khuôn mặt ${f.ordinal}"><div><strong>Khuôn mặt ${f.ordinal}</strong><small>${live?`Lần đầu: ${esc(new Date(f.first_seen).toLocaleTimeString('vi-VN'))}`:`Xuất hiện từ ${fmt(f.video_time)}s`} · thấy ${fmt(f.seen_count)} lần</small></div></article>`).join('')}</div>`;
+  return `<div class="face-grid">${items.map(f=>`<article class="face-card"><img loading="lazy" src="/api/faces/${encodeURIComponent(f.id)}/image" alt="Ảnh đại diện khuôn mặt ${f.ordinal}"><div class="face-card-info"><strong>Khuôn mặt ${f.ordinal}</strong><small>${live?`Lần đầu: ${esc(new Date(f.first_seen).toLocaleTimeString('vi-VN'))}`:`Xuất hiện từ ${fmt(f.video_time)}s`} · thấy ${fmt(f.seen_count)} lần</small>${live&&me.role!=="viewer"?`<button type="button" class="face-delete" data-delete-face="${esc(f.id)}" aria-label="Xóa khuôn mặt ${f.ordinal}">⌫ <span>Xóa</span></button>`:""}</div></article>`).join('')}</div>`;
 }
 async function cameraFaceHistory(day,version){
   const today=new Date(), localDay=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
   const selected=day||localDay;
   const [days,faces]=await Promise.all([api('/faces/days'),allFaces('day='+encodeURIComponent(selected))]);
   if(version!==routeVersion||!$('#camera-history'))return;
-  $('#camera-history').innerHTML=`<div class="face-history"><section class="panel"><h2>Ngày ghi nhận từ webcam</h2><button class="face-day ${selected===localDay?'active':''}" data-face-day="${localDay}">Hôm nay · ${localDay}</button>${days.items.filter(d=>d.day!==localDay).map(d=>`<button class="face-day ${selected===d.day?'active':''}" data-face-day="${esc(d.day)}"><span>${esc(d.day)}</span><strong>${fmt(d.count)}</strong></button>`).join('')}<p class="help">Mỗi ngày có số khuôn mặt riêng. Ảnh và dữ liệu chỉ lưu tại máy này.</p></section><section class="panel"><div class="panel-head"><h2>${esc(selected)} · ${fmt(faces.total)} khuôn mặt ước tính</h2><span class="tag">WEBCAM</span></div>${faceCards(faces.items,true)}<p class="help">Mặt quá nhỏ, mờ hoặc bị che có thể không được nhận ra; một người đôi khi bị đếm trùng.</p></section></div>`;
+  $('#camera-history').innerHTML=`<div class="face-history"><section class="panel"><h2>Ngày ghi nhận từ webcam</h2><button class="face-day ${selected===localDay?'active':''}" data-face-day="${localDay}">Hôm nay · ${localDay}</button>${days.items.filter(d=>d.day!==localDay).map(d=>`<button class="face-day ${selected===d.day?'active':''}" data-face-day="${esc(d.day)}"><span>${esc(d.day)}</span><strong>${fmt(d.count)}</strong></button>`).join('')}<p class="help">Mỗi ngày có số khuôn mặt riêng. Ảnh và dữ liệu chỉ lưu tại máy này.</p></section><section class="panel"><div class="panel-head"><h2>${esc(selected)} · ${fmt(faces.total)} khuôn mặt ước tính</h2><div class="face-tools"><span class="tag">WEBCAM</span>${me.role!=="viewer"?`<button type="button" class="face-reset" data-delete-day="${esc(selected)}" ${faces.total?"":"disabled"}>↺ Xóa cả ngày</button>`:""}</div></div><p class="help">Xóa dữ liệu cũ để thử lượt nhận diện mới. Camera sẽ dừng trước khi xóa.</p>${faceCards(faces.items,true)}<p class="help">Mặt quá nhỏ, mờ hoặc bị che có thể không được nhận ra; một người đôi khi bị đếm trùng.</p></section></div>`;
   document.querySelectorAll('[data-face-day]').forEach(button=>button.onclick=()=>cameraFaceHistory(button.dataset.faceDay,version).catch(e=>toast(e.message)));
   if(selected===localDay){
     if($('#camera-face-count'))$('#camera-face-count').textContent=faces.total;
@@ -149,16 +156,27 @@ async function trainingPage(version){
  if(latest?.metrics.length)html+=`<div class="panel"><h2>Quá trình học — validation</h2><div class="table-wrap"><table><thead><tr><th>EPOCH</th><th>BOX LOSS</th><th>CLASS LOSS</th><th>PRECISION</th><th>RECALL</th><th>mAP50</th><th>mAP50–95</th></tr></thead><tbody>${latest.metrics.slice().reverse().map(m=>`<tr><td>${m.epoch}</td><td>${fmt(m['train/box_loss'])}</td><td>${fmt(m['train/cls_loss'])}</td><td>${fmt(100*m['metrics/precision(B)'])}%</td><td>${fmt(100*m['metrics/recall(B)'])}%</td><td>${fmt(100*m['metrics/mAP50(B)'])}%</td><td>${fmt(100*m['metrics/mAP50-95(B)'])}%</td></tr>`).join('')}</tbody></table></div></div>`;
  if(d.report){html+=`<div class="panel"><h2>So sánh trên cùng tập test · IoU 0.5 / confidence 0.35</h2><p>Model mặc định: <strong>${esc(d.report.default_model)}</strong>. ${d.report.promoted?'Model fine-tune đã đạt điều kiện thay thế.':'Model fine-tune chưa đạt toàn bộ điều kiện thay thế model mặc định.'}</p><div class="table-wrap"><table><thead><tr><th>MODEL</th><th>TP / FP / FN</th><th>PRECISION</th><th>RECALL</th><th>F1</th><th>MS / ẢNH</th></tr></thead><tbody>${d.report.results.map(r=>`<tr><td>${esc(r.model)}</td><td>${r.overall.tp} / ${r.overall.fp} / ${r.overall.fn}</td><td>${fmt(r.overall.precision*100)}%</td><td>${fmt(r.overall.recall*100)}%</td><td>${fmt(r.overall.f1*100)}%</td><td>${fmt(r.mean_latency_ms)}</td></tr>`).join('')}</tbody></table></div><p class="help">Tập campus test chỉ có 3 ảnh; COCO128 thuộc dữ liệu pretrain. Đây là phép thử phát triển quy mô nhỏ, chưa chứng minh độ chính xác toàn bộ camera trường học.</p></div>`;}
  if(d.event_dataset){const items=d.event_dataset.items||[];const sources=[...new Set(items.map(i=>i.source))];html+='<section class="panel"><h2>Dữ liệu sự kiện đã chuẩn bị</h2><p>'+items.length+' video · '+items.reduce((n,i)=>n+(i.images?.length||0),0)+' ảnh trích xuất · chỉ lưu local</p><div class="table-wrap"><table><thead><tr><th>NGUỒN</th><th>VIDEO</th><th>NHÃN</th></tr></thead><tbody>'+sources.map(s=>'<tr><td>'+esc(s)+'</td><td>'+items.filter(i=>i.source===s).length+'</td><td>'+esc([...new Set(items.filter(i=>i.source===s).map(i=>i.label))].join(', '))+'</td></tr>').join('')+'</tbody></table></div><p>Chia theo clip/nhóm, không trộn các frame gần nhau giữa train/test. Đây là dữ liệu chuẩn bị, chưa phải bằng chứng model hành vi đã được huấn luyện chính xác. Ảnh cháy cần gán bounding box trước khi train.</p><p>Lần tải còn thiếu: '+(d.event_dataset.failures?.length||0)+' mục.</p><a href="#library">Mở thư viện video nghiên cứu</a></section>';}
- $('#content').innerHTML=html;if(!d.report)timer=setTimeout(()=>trainingPage(version).catch(e=>toast(e.message)),5000);
+ if(d.phone_training){
+  const p=d.phone_training,results=p.results||[];
+  const state=p.status==='completed'?'ĐÃ HUẤN LUYỆN & ĐÁNH GIÁ':p.status==='failed'?'HUẤN LUYỆN BỊ GIÁN ĐOẠN':'ĐANG HUẤN LUYỆN';
+  html=`<section class="panel"><div class="panel-head"><h2>Nhận diện cơ thể · dữ liệu Drive</h2><span class="tag">${state}</span></div><p>${p.train_images??114} ảnh train · ${p.val_images??9} ảnh validation · ${p.test_images??9} ảnh test · vòng ${p.epochs_completed??0}/${p.epochs??6}</p><p class="help">13 cảnh video. Ảnh chỉ còn thân người và che khuất giả lập được bổ sung vào train. Các cảnh kiểm tra được giữ riêng.</p>${results.length?`<div class="table-wrap"><table><thead><tr><th>MODEL</th><th>PRECISION</th><th>RECALL</th><th>F1</th><th>SAI SỐ ĐẾM TB</th></tr></thead><tbody>${results.map(r=>`<tr><td>${r.name==='baseline'?'Hiện tại':'Sau huấn luyện'}</td><td>${fmt(100*r.metrics.precision)}%</td><td>${fmt(100*r.metrics.recall)}%</td><td>${fmt(100*r.metrics.f1)}%</td><td>${fmt(r.count_mae)}</td></tr>`).join('')}</tbody></table></div><p>${p.candidate_passed_gate?'Model mới đạt điều kiện thử nghiệm trên tập nhỏ.':'Model mới chưa đạt điều kiện thay thế. Tiếp tục dùng model hiện tại.'}</p>`:''}<p class="help">Nhãn train/validation chủ yếu do model tạo. Test có 9 ảnh ngoài trời đã rà soát; chưa đủ để kết luận độ chính xác ở quán đông người.</p></section><details class="panel"><summary>Báo cáo cũ · tham khảo</summary>`+html+'</details>';
+ }
+ $('#content').innerHTML=html;if(!d.report||['training','updating'].includes(d.phone_training?.status))timer=setTimeout(()=>trainingPage(version).catch(e=>toast(e.message)),5000);
 }
 async function stopCamera(){
   clearTimeout(cameraTimer);
-  const stream=cameraStream, session=cameraSession;
-  cameraStream=null;cameraSession=null;
+  clearTimeout(previewTimer);previewRequest?.abort();previewRequest=null;cameraViewVersion++;
+  if(previewUrl){URL.revokeObjectURL(previewUrl);previewUrl=null;}
+  const stream=cameraStream, session=cameraSession||sessionStorage.getItem(cameraSessionKey);
+  cameraStream=null;cameraSession=null;cameraRemote=false;
   if(stream)stream.getTracks().forEach(track=>track.stop());
-  if(session)try{await api('/live/'+session+'/stop',{method:'POST'});}catch(error){console.warn('Could not stop camera session:',error.message);}
+  if(session)try{await api('/live/'+session+'/stop',{method:'POST'});sessionStorage.removeItem(cameraSessionKey);}catch(error){if(error.status===404)sessionStorage.removeItem(cameraSessionKey);else console.warn('Could not stop camera session:',error.message);}
   if($('#camera-state'))$('#camera-state').textContent='Camera đã dừng.';
   if($('#camera-placeholder'))$('#camera-placeholder').hidden=false;
+  const remotePreview=$('#camera-remote-preview');if(remotePreview){remotePreview.hidden=true;remotePreview.removeAttribute('src');}
+  if($('#camera-ai-panel'))$('#camera-ai-panel').hidden=true;
+  if($('#camera-preview-state'))$('#camera-preview-state').textContent='';
+  if($('#camera-config'))$('#camera-config').querySelectorAll('input,select').forEach(x=>x.disabled=false);
   if($('#camera-count'))$('#camera-count').textContent='–';
   const canvas=$('#camera-overlay');if(canvas)canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
 }
@@ -169,22 +187,27 @@ async function systemEnhancements(){
   $('#content').prepend(box);
 }
 function drawCameraOverlay(result){
-  const canvas=$('#camera-overlay'), video=$('#camera-video');if(!canvas||!video)return;
-  canvas.width=video.videoWidth;canvas.height=video.videoHeight;
+  const canvas=$(cameraRemote?'#camera-ai-overlay':'#camera-overlay'), video=cameraRemote?$('#camera-ai-image'):$('#camera-video');if(!canvas||!video)return;
+  canvas.width=video.videoWidth||video.naturalWidth;canvas.height=video.videoHeight||video.naturalHeight;
+  const stage=canvas.parentElement;
+  const scale=Math.min(stage.clientWidth/canvas.width,stage.clientHeight/canvas.height);
+  canvas.style.width=`${canvas.width*scale}px`;canvas.style.height=`${canvas.height*scale}px`;
+  canvas.style.inset='auto';canvas.style.left='50%';canvas.style.top='50%';canvas.style.transform='translate(-50%,-50%)';
   const ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);
   for(const item of result.detections){
     const [x1,y1,x2,y2]=item.bbox, w=canvas.width, h=canvas.height;
-    ctx.strokeStyle='#9ce4d1';ctx.lineWidth=3;ctx.strokeRect(x1*w,y1*h,(x2-x1)*w,(y2-y1)*h);
-    ctx.fillStyle='#9ce4d1';ctx.font='bold 15px Segoe UI';ctx.fillText(`Người ${item.track_id??''}`,x1*w+4,Math.max(18,y1*h-7));
+    const color=(item.class_id??0)===0?'#55c7ff':'#ffbd59';
+    ctx.strokeStyle=color;ctx.lineWidth=3;ctx.strokeRect(x1*w,y1*h,(x2-x1)*w,(y2-y1)*h);
+    ctx.fillStyle=color;ctx.font='bold 15px Segoe UI';ctx.fillText(`${({person:"Người",car:"Ô tô",motorcycle:"Xe máy",truck:"Xe tải",bus:"Xe buýt",bicycle:"Xe đạp"})[item.label]||item.label||"Người"} #${item.track_id??"?"} · ${Math.round(item.confidence*100)}%`,x1*w+4,Math.max(18,y1*h-7));
     const pose=item.keypoints||[];const edges=[[5,6],[5,7],[7,9],[6,8],[8,10],[5,11],[6,12],[11,12],[11,13],[13,15],[12,14],[14,16]];
     ctx.strokeStyle='#f1bf75';ctx.lineWidth=2;for(const [a,b]of edges){if(pose[a]?.[2]>=.5&&pose[b]?.[2]>=.5){ctx.beginPath();ctx.moveTo(pose[a][0]*w,pose[a][1]*h);ctx.lineTo(pose[b][0]*w,pose[b][1]*h);ctx.stroke();}}
   }
   for(const item of result.hazards){const [x1,y1,x2,y2]=item.bbox;ctx.strokeStyle='#fb9b92';ctx.lineWidth=4;ctx.strokeRect(x1*canvas.width,y1*canvas.height,(x2-x1)*canvas.width,(y2-y1)*canvas.height);}
-  for(const face of result.faces||[]){const [x1,y1,x2,y2]=face.bbox;ctx.strokeStyle='#a4e49c';ctx.lineWidth=2;ctx.strokeRect(x1*canvas.width,y1*canvas.height,(x2-x1)*canvas.width,(y2-y1)*canvas.height);ctx.fillStyle='#a4e49c';ctx.fillText(`Mặt ${face.number}`,x1*canvas.width,Math.max(18,y1*canvas.height-6));}
+  for(const face of result.faces||[]){const [x1,y1,x2,y2]=face.bbox;ctx.strokeStyle='#55c7ff';ctx.lineWidth=2;ctx.strokeRect(x1*canvas.width,y1*canvas.height,(x2-x1)*canvas.width,(y2-y1)*canvas.height);ctx.fillStyle='#55c7ff';ctx.fillText(`${face.pending?"Mặt · đang xác nhận":`Mặt ${face.number}`}`,x1*canvas.width,Math.max(18,y1*canvas.height-6));}
 }
 async function cameraPage(version){
   const system=await api('/system');if(version!==routeVersion)return;
-  $('#content').innerHTML=`<div class="camera-layout"><section class="panel"><div class="panel-head"><h2>Khung hình trực tiếp</h2><span class="tag">WEBCAM · LOCAL</span></div><div id="camera-alarm" class="red-alarm" role="alert" hidden></div><div class="camera-stage"><video id="camera-video" autoplay muted playsinline></video><canvas id="camera-overlay" aria-hidden="true"></canvas><div id="camera-placeholder" class="camera-placeholder"><span class="camera-icon" aria-hidden="true">◉</span><strong>Webcam sẵn sàng kết nối</strong><span>Bật camera để xem trực tiếp và phân tích tại máy.</span></div></div><p class="camera-status"><span class="dot"></span><span id="camera-state">Camera chưa bật. Chỉ ảnh có cảnh báo mới được lưu.</span></p><p class="help">Trình duyệt gửi từng khung JPEG tới backend trên máy này. Không phát video ra Internet. Telegram chỉ nhận ảnh bằng chứng khi đã cấu hình.</p><div class="camera-actions"><button id="camera-start" ${me.role==='viewer'?'disabled':''}>Bật camera &amp; phân tích</button><button id="camera-stop" class="quiet" disabled>Dừng camera</button></div></section><div class="camera-side"><div class="metric"><span>Người đang thấy</span><strong id="camera-count">–</strong></div><section class="panel"><h2>Ngưỡng cảnh báo</h2><form id="camera-config"><label>Tên nguồn<input name="camera_name" value="Webcam trong nhà" maxlength="80" required></label><label>Số người thường có (n)<input name="expected_people" type="number" min="0" max="20" value="1" required></label><label>Giữ quá ngưỡng (giây)<input name="crowd_seconds" type="number" min="1" max="60" value="3" required></label><label>Nằm lâu (giây)<input name="lying_seconds" type="number" min="2" max="120" value="8" required></label><label class="check"><input name="detect_falls" type="checkbox" checked> Cảnh báo nghi té ngã / nằm lâu (Pose)</label><label class="check"><input name="detect_fire" type="checkbox" ${system.fire_available?'checked':'disabled'}> Cảnh báo nghi lửa / khói ${system.fire_available?'':'· chưa có model'}</label></form><p class="help">Đếm người ẩn danh theo khung hình; không nhận dạng danh tính. Té ngã và lửa/khói đều cần xác minh.</p><p class="help">Telegram: ${system.telegram_configured?'đã cấu hình':'chưa cấu hình · xem Hệ thống'}</p></section><section class="panel"><h2>Cảnh báo phiên này</h2><ul id="camera-alerts" class="camera-alerts"><li>Chưa có cảnh báo.</li></ul></section></div></div><div id="camera-history"></div>`;
+  $('#content').innerHTML=`<div class="camera-layout"><section class="panel"><div class="panel-head"><h2>Khung hình trực tiếp</h2><span id="camera-source-label" class="tag">WEBCAM · LOCAL</span></div><div id="camera-alarm" class="red-alarm" role="alert" hidden></div><div class="camera-stage"><video id="camera-video" autoplay muted playsinline></video><img id="camera-remote-preview" alt="Hình ảnh từ camera thiết bị khác" hidden><canvas id="camera-overlay" aria-hidden="true"></canvas><div id="camera-placeholder" class="camera-placeholder"><span class="camera-icon" aria-hidden="true">◉</span><strong>Webcam sẵn sàng kết nối</strong><span>Bật camera để xem trực tiếp và phân tích tại máy.</span></div></div><div id="camera-view-tools" class="camera-view-tools" hidden><span>Hướng hình</span><button type="button" class="quiet" data-turn="-90">↶ Trái 90°</button><button type="button" class="quiet" data-turn="90">↷ Phải 90°</button><button type="button" class="quiet" id="camera-flip">↔ Lật ngang</button><button type="button" class="quiet" id="camera-view-reset">Hướng gốc</button></div><div class="camera-legend" aria-label="Chú thích màu nhận diện"><span class="legend-person">■ Người · theo cơ thể</span><span class="legend-object">■ Vật thể</span></div><p id="camera-preview-state" class="help" aria-live="polite"></p><details id="camera-ai-panel" class="camera-ai-panel" hidden><summary>Kết quả AI · khung hình đã phân tích</summary><p class="help">Khung người và số mặt nằm trên đúng ảnh AI vừa xử lý. Hình trực tiếp phía trên cập nhật độc lập.</p><div class="camera-stage"><img id="camera-ai-image" alt="Khung hình AI đã phân tích"><canvas id="camera-ai-overlay" aria-hidden="true"></canvas></div></details><p class="camera-status"><span class="dot"></span><span id="camera-state">Camera chưa bật. Chỉ ảnh có cảnh báo mới được lưu.</span></p><p class="help">Webcam gửi ảnh từ trình duyệt; camera mạng được máy tính kết nối trực tiếp. AI xử lý trên máy tính này. Telegram chỉ nhận ảnh bằng chứng khi đã cấu hình.</p><div class="camera-actions"><button id="camera-start" ${me.role==='viewer'?'disabled':''}>Bật camera &amp; phân tích</button><button id="camera-stop" class="quiet" disabled>Dừng camera</button></div></section><div class="camera-side"><div class="metric"><span>Người đang thấy</span><strong id="camera-count">–</strong><p class="help">Đếm theo cơ thể, không cần nhìn thấy mặt. Mặt được lưu riêng khi đủ rõ.</p></div><section class="panel"><h2>Ngưỡng cảnh báo</h2><form id="camera-config"><label>Nguồn hình ảnh<select name="source_type" id="camera-source"><option value="local">Webcam của máy này</option><option value="network">Điện thoại / camera IP qua mạng</option></select></label><div id="network-camera-fields" hidden><label>Đường dẫn luồng camera<input name="camera_url" type="text" autocomplete="off" placeholder="http://192.168.1.20:8081/live.flv"></label><label>Hướng hình<select name="camera_rotation"><option value="0">Giữ hướng từ điện thoại</option><option value="90">Xoay phải 90°</option><option value="270">Xoay trái 90°</option><option value="180">Xoay 180°</option></select></label><label class="check"><input name="camera_mirror" type="checkbox">Lật ngang như camera selfie</label><p class="help">Có thể đổi ngay khi đang chạy bằng nút dưới hình. Hình AI và ảnh mặt lưu cùng hướng với hình xem. Để chữ đọc đúng chiều, chỉ bật lật ngang khi nguồn đang bị ngược.</p><label>Tài khoản camera (nếu có)<input name="camera_username" autocomplete="off" placeholder="Tài khoản đặt trong app camera"></label><label>Mật khẩu camera<input name="camera_password" type="password" autocomplete="off" placeholder="Mật khẩu đặt trong app camera"></label><p class="help">IP Camera Lite: dùng đường dẫn /live.flv. Nếu Chrome xem được nhưng web báo yêu cầu đăng nhập, điền tài khoản của app tại đây. Thông tin này chỉ dùng cho phiên kết nối, không lưu vào tác vụ.</p><p class="help">Dùng URL RTSP hoặc HTTP/MJPEG của thiết bị cùng mạng. Điện thoại cần bật tính năng/app phát luồng camera. Đây không phải địa chỉ trang quản trị camera.</p></div><label>Chất lượng nhận diện<select name="image_size"><option value="640">Cân bằng · nhanh hơn</option><option value="960">Người ở xa · chi tiết hơn, AI chậm hơn</option></select></label><label>Tên nguồn<input name="camera_name" value="Webcam trong nhà" maxlength="80" required></label><label>Số người thường có (n)<input name="expected_people" type="number" min="0" max="20" value="1" required></label><label>Giữ quá ngưỡng (giây)<input name="crowd_seconds" type="number" min="1" max="60" value="3" required></label><label>Nằm lâu (giây)<input name="lying_seconds" type="number" min="2" max="120" value="8" required></label><label class="check"><input name="detect_objects" type="checkbox" checked> Phát hiện vật thể (ô tô, xe máy, xe tải…)</label><label class="check"><input name="detect_falls" type="checkbox"> Cảnh báo nghi té ngã / nằm lâu (Pose · tốn thêm xử lý)</label><label class="check"><input name="detect_fire" type="checkbox" ${system.fire_available?'checked':'disabled'}> Cảnh báo nghi lửa / khói ${system.fire_available?'':'· chưa có model'}</label></form><p class="help">Đếm người ẩn danh theo khung hình; không nhận dạng danh tính. Té ngã và lửa/khói đều cần xác minh.</p><p class="help">Telegram: ${system.telegram_configured?'đã cấu hình':'chưa cấu hình · xem Hệ thống'}</p></section><section class="panel"><h2>Cảnh báo phiên này</h2><ul id="camera-alerts" class="camera-alerts"><li>Chưa có cảnh báo.</li></ul></section></div></div><div id="camera-history"></div>`;
   const faceOption=document.createElement('label');faceOption.className='check';
   faceOption.innerHTML=`<input name="recognize_faces" type="checkbox" ${system.face_available?'checked':'disabled'}> Lưu khuôn mặt và đếm số khuôn mặt khác nhau theo ngày`;
   $('#camera-config').append(faceOption);
@@ -194,52 +217,173 @@ async function cameraPage(version){
   facePanel.innerHTML='<div class="panel-head"><h2>Hôm nay · <span id="camera-face-count">0</span> khuôn mặt</h2><span class="tag">ĐÃ LƯU</span></div><div id="camera-faces" class="empty">Chưa có khuôn mặt trong ngày.</div>';
   $('.camera-side').insertBefore(facePanel,$('.camera-side').lastElementChild);
   $('#camera-state').textContent='Camera chưa bật. Khi bật lưu khuôn mặt, ảnh đại diện được giữ tại máy.';
+  $('#camera-source').onchange=()=>{const remote=$('#camera-source').value==='network';$('#network-camera-fields').hidden=!remote;$('[name="image_size"]').value=remote?'960':'640';$('#camera-source-label').textContent=remote?'ĐIỆN THOẠI / CAMERA IP':'WEBCAM · LOCAL';};
+  let latestAI=null, changingView=false;
+  const rotationInput=$('[name="camera_rotation"]'), mirrorInput=$('[name="camera_mirror"]');
+  $('#camera-ai-panel').ontoggle=()=>{if(latestAI&&$('#camera-ai-panel').open)drawCameraOverlay(latestAI);};
+  const resizeAI=new ResizeObserver(()=>{if(cameraRemote&&latestAI&&$('#camera-ai-panel')?.open)drawCameraOverlay(latestAI);});
+  resizeAI.observe($('#camera-ai-panel'));
+  async function changeView(rotation,mirror){
+    if(changingView)return;
+    changingView=true;cameraViewVersion++;latestAI=null;
+    $('#camera-view-tools').querySelectorAll('button').forEach(b=>b.disabled=true);
+    const oldRotation=rotationInput.value, oldMirror=mirrorInput.checked;
+    try{
+      if(cameraRemote&&cameraSession){
+        $('#camera-preview-state').textContent='Đang đổi hướng hình…';
+        await api('/live/'+cameraSession+'/view',{method:'PATCH',body:JSON.stringify({rotation,mirror})});
+      }
+      rotationInput.value=String(rotation);mirrorInput.checked=mirror;
+      $('#camera-flip').setAttribute('aria-pressed',String(mirror));
+      $('#camera-ai-image').removeAttribute('src');
+      $('#camera-ai-overlay').getContext('2d').clearRect(0,0,$('#camera-ai-overlay').width,$('#camera-ai-overlay').height);
+    }catch(error){rotationInput.value=oldRotation;mirrorInput.checked=oldMirror;toast(error.message);}
+    finally{changingView=false;cameraViewVersion++;$('#camera-view-tools').querySelectorAll('button').forEach(b=>b.disabled=false);}
+  }
+  $('#camera-view-tools').querySelectorAll('[data-turn]').forEach(button=>button.onclick=()=>changeView((Number(rotationInput.value)+Number(button.dataset.turn)+360)%360,mirrorInput.checked));
+  $('#camera-flip').onclick=()=>changeView(Number(rotationInput.value),!mirrorInput.checked);
+  $('#camera-view-reset').onclick=()=>changeView(0,false);
   $('#camera-start').onclick=async()=>{
     const button=$('#camera-start');button.disabled=true;
     try{
-      if(!navigator.mediaDevices?.getUserMedia)throw new Error('Trình duyệt không hỗ trợ camera tại địa chỉ này. Dùng localhost hoặc HTTPS.');
+      const remote=$('#camera-source').value==='network';
+      if(!remote&&!navigator.mediaDevices?.getUserMedia)throw new Error('Trình duyệt không hỗ trợ camera tại địa chỉ này. Dùng localhost hoặc HTTPS.');
+      const previous=sessionStorage.getItem(cameraSessionKey);
+      if(previous){try{await api('/live/'+encodeURIComponent(previous)+'/stop',{method:'POST'});}catch(error){if(error.status!==404)throw error;}sessionStorage.removeItem(cameraSessionKey);}
       const form=new FormData($('#camera-config'));
-      cameraStream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720}},audio:false});
-      const video=$('#camera-video');video.srcObject=cameraStream;await video.play();
-      $('#camera-placeholder').hidden=true;
-      const config={source_id:'live',camera_name:String(form.get('camera_name')),model:'yolo11n-pose',image_size:640,confidence:.35,dwell_seconds:1.5,stride:1,max_seconds:0,sequence_fps:25,redact:false,zones:[],detect_falls:form.has('detect_falls'),detect_fire:form.has('detect_fire'),detect_interactions:false,expected_people:Number(form.get('expected_people')),crowd_seconds:Number(form.get('crowd_seconds')),lying_seconds:Number(form.get('lying_seconds')),crowd_threshold:0,loiter_seconds:0};
+      const video=$('#camera-video');
+      cameraRemote=remote;
+      video.hidden=remote;$('#camera-remote-preview').hidden=true;$('#camera-overlay').hidden=remote;$('#camera-view-tools').hidden=!remote;latestAI=null;
+      if(!remote){
+        cameraStream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720}},audio:false});
+        video.srcObject=cameraStream;await video.play();
+      }else if(!String(form.get('camera_url')||'').trim()){
+        throw new Error('Nhập đường dẫn luồng từ điện thoại hoặc camera IP.');
+      }
+      $('#camera-placeholder').hidden=!remote;
+      const config={source_id:'live',camera_name:String(form.get('camera_name')),model:form.has('detect_falls')?'yolo11n-pose':'yolo11s',image_size:Number(form.get('image_size')),confidence:.3,dwell_seconds:1.5,stride:1,max_seconds:0,sequence_fps:25,redact:false,zones:[],detect_falls:form.has('detect_falls'),detect_fire:form.has('detect_fire'),detect_interactions:false,expected_people:Number(form.get('expected_people')),crowd_seconds:Number(form.get('crowd_seconds')),lying_seconds:Number(form.get('lying_seconds')),crowd_threshold:0,loiter_seconds:0};
+      config.camera_rotation=remote?Number(form.get('camera_rotation')):0;
+      config.camera_mirror=remote&&form.has('camera_mirror');
+      config.camera_url=remote?String(form.get('camera_url')).trim():'';
+      config.camera_username=remote?String(form.get('camera_username')||''):'';
+      config.camera_password=remote?String(form.get('camera_password')||''):'';
       config.recognize_faces=form.has('recognize_faces');
+      config.detect_objects=form.has('detect_objects');
       cameraSession=(await api('/live/start',{method:'POST',body:JSON.stringify(config)})).id;
-      $('#camera-stop').disabled=false;$('#camera-state').textContent='Đang phân tích webcam…';$('#camera-config').querySelectorAll('input').forEach(x=>x.disabled=true);
+      sessionStorage.setItem(cameraSessionKey,cameraSession);
+      $('#camera-stop').disabled=false;$('#camera-state').textContent='Đang phân tích webcam…';$('#camera-config').querySelectorAll('input,select').forEach(x=>x.disabled=true);
+      const activeSession=cameraSession;
+      const active=()=>cameraSession===activeSession&&version===routeVersion;
+      $('#camera-flip').setAttribute('aria-pressed',String(config.camera_mirror));
+      async function previewLoop(){
+        if(!active()||!cameraRemote)return;
+        const viewVersion=cameraViewVersion;
+        try{
+          if(!changingView){
+            const request=new AbortController();previewRequest=request;
+            const timeout=setTimeout(()=>request.abort(),6000);
+            let response,blob;
+            try{
+              response=await fetch('/api/live/'+activeSession+'/preview',{credentials:'same-origin',cache:'no-store',signal:request.signal});
+              if(!response.ok){const error=await response.json();throw new Error(error.detail||'Mất tín hiệu camera.');}
+              blob=await response.blob();
+            }finally{clearTimeout(timeout);}
+            if(active()&&viewVersion===cameraViewVersion){
+              const next=URL.createObjectURL(blob), decoded=new Image();decoded.src=next;
+              try{await decoded.decode();}catch(error){URL.revokeObjectURL(next);throw error;}
+              if(!active()||viewVersion!==cameraViewVersion){URL.revokeObjectURL(next);return;}
+              const preview=$('#camera-remote-preview');preview.src=next;preview.hidden=false;
+              if(previewUrl)URL.revokeObjectURL(previewUrl);previewUrl=next;
+              $('#camera-placeholder').hidden=true;
+              $('#camera-preview-state').textContent='Hình trực tiếp · cập nhật độc lập với AI';
+            }
+          }
+        }catch(error){if(active()&&error.name!=='AbortError'){$('#camera-preview-state').textContent='Mất hình trực tiếp: '+error.message;$('#camera-remote-preview').hidden=true;}}
+        finally{if(active()&&cameraRemote)previewTimer=setTimeout(previewLoop,100);}
+      }
+      if(remote)previewLoop();
       const capture=document.createElement('canvas');capture.width=video.videoWidth;capture.height=video.videoHeight;
       let seenAlert=false;
-      let lastFaceCount=-1,lastFaceDay='';
+      let lastFaceCount=-1,lastFaceDay='',refreshingFaces=false;
       async function frameLoop(){
-        if(!cameraStream||!cameraSession||version!==routeVersion)return;
+        if(!active())return;
+        if(changingView){cameraTimer=setTimeout(frameLoop,100);return;}
+        const viewVersion=cameraViewVersion;
         try{
-          capture.getContext('2d').drawImage(video,0,0,capture.width,capture.height);
-          const blob=await new Promise(resolve=>capture.toBlob(resolve,'image/jpeg',.78));
-          if(!blob)throw new Error('Không chụp được frame từ camera.');
-          const data=new FormData();data.append('file',blob,'frame.jpg');
-          const result=await api('/live/'+cameraSession+'/frame',{method:'POST',body:data});
-          if(!cameraStream||version!==routeVersion)return;
+          let result;
+          if(remote){
+            result=await api('/live/'+activeSession+'/remote-frame',{method:'POST'});
+            if(!active())return;
+            if(viewVersion!==cameraViewVersion){cameraTimer=setTimeout(frameLoop,100);return;}
+            const preview=$('#camera-ai-image');
+            preview.src='data:image/jpeg;base64,'+result.preview;
+            await preview.decode();
+            if(!active())return;
+            if(viewVersion!==cameraViewVersion){cameraTimer=setTimeout(frameLoop,100);return;}
+            latestAI=result;$('#camera-ai-panel').hidden=false;
+          }else{
+            capture.getContext('2d').drawImage(video,0,0,capture.width,capture.height);
+            const blob=await new Promise(resolve=>capture.toBlob(resolve,'image/jpeg',.9));
+            if(!blob)throw new Error('Không chụp được frame từ camera.');
+            const data=new FormData();data.append('file',blob,'frame.jpg');
+            result=await api('/live/'+activeSession+'/frame',{method:'POST',body:data});
+          }
+          if(!active())return;
           $('#camera-count').textContent=result.people;drawCameraOverlay(result);
           if(config.recognize_faces&&result.face_day){
             $('#camera-face-count').textContent=result.face_count_today;
-            if(result.face_count_today!==lastFaceCount||result.face_day!==lastFaceDay){
+            if(!refreshingFaces&&(result.face_count_today!==lastFaceCount||result.face_day!==lastFaceDay)){
               lastFaceCount=result.face_count_today;lastFaceDay=result.face_day;
-              const selected=$('#camera-history [data-face-day].active')?.dataset.faceDay;
-              if(!selected||selected===result.face_day)await cameraFaceHistory(result.face_day,version);
-              else {const found=await allFaces('day='+encodeURIComponent(result.face_day));if(cameraStream&&version===routeVersion)$('#camera-faces').innerHTML=faceCards(found.items,true);}
+              refreshingFaces=true;
+              (async()=>{
+                const selected=$('#camera-history [data-face-day].active')?.dataset.faceDay;
+                if(!selected||selected===result.face_day)await cameraFaceHistory(result.face_day,version);
+                else {const found=await allFaces('day='+encodeURIComponent(result.face_day));if((cameraStream||cameraRemote)&&version===routeVersion)$('#camera-faces').innerHTML=faceCards(found.items,true);}
+              })().catch(error=>{lastFaceCount=-1;console.warn('Face gallery:',error.message);}).finally(()=>{refreshingFaces=false;});
             }
           }
           if(result.alerts.length){
             const list=$('#camera-alerts');if(!seenAlert){list.innerHTML='';seenAlert=true;}
             for(const alert of result.alerts){const li=document.createElement('li');li.className=alert.severity==='urgent'?'urgent-item':'';li.textContent=`${alert.zone} · ${Math.round(result.time)}s · Telegram: ${alert.telegram_status}`;list.prepend(li);if(alert.severity==='urgent'){const alarm=$('#camera-alarm');alarm.hidden=false;alarm.textContent=`BÁO ĐỘNG ĐỎ · ${alert.zone} · cần kiểm tra ngay`;}}
           }
-          $('#camera-state').textContent=`Đang phân tích · ${result.people} người đang thấy · ${Math.round(result.time)}s`;
-        }catch(error){if(cameraStream)$('#camera-state').textContent='Lỗi phân tích: '+error.message;}
-        if(cameraStream&&version===routeVersion)cameraTimer=setTimeout(frameLoop,400);
+          $('#camera-state').textContent=`Đang phân tích · ${result.people} người · ${result.objects||0} vật thể · ${Math.round(result.time)}s · AI ${result.processing_ms??"–"} ms`;
+        }catch(error){if(active())$('#camera-state').textContent='Lỗi phân tích: '+error.message;}
+        if(active())cameraTimer=setTimeout(frameLoop,100);
       }
       frameLoop();
     }catch(error){await stopCamera();button.disabled=false;$('#camera-state').textContent=error.message;}
   };
-  $('#camera-stop').onclick=async()=>{await stopCamera();$('#camera-start').disabled=false;$('#camera-stop').disabled=true;$('#camera-config').querySelectorAll('input').forEach(x=>x.disabled=false);};
+  $('#camera-stop').onclick=async()=>{await stopCamera();$('#camera-start').disabled=false;$('#camera-stop').disabled=true;$('#camera-config').querySelectorAll('input,select').forEach(x=>x.disabled=false);};
+  window.addEventListener('hashchange',()=>resizeAI.disconnect(),{once:true});
   await cameraFaceHistory(null,version);
 }
 api('/me').then(u=>{me=u;enter();}).catch(()=>showLogin());
+
+
+function confirmFaceDelete(title, message){
+  return new Promise(resolve=>{
+    const dialog=document.createElement('dialog');dialog.className='face-dialog';
+    dialog.innerHTML=`<form method="dialog"><span class="face-dialog-icon">↺</span><h2>${esc(title)}</h2><p>${esc(message)}</p><div class="actions"><button class="quiet" value="cancel">Giữ lại</button><button class="danger" value="delete">Xóa dữ liệu</button></div></form>`;
+    dialog.addEventListener('close',()=>{const ok=dialog.returnValue==='delete';dialog.remove();resolve(ok);},{once:true});
+    document.body.append(dialog);dialog.showModal();
+  });
+}
+document.addEventListener('click',async event=>{
+  const button=event.target.closest('[data-delete-face],[data-delete-day]');if(!button||button.disabled)return;
+  const day=button.dataset.deleteDay;
+  const selected=day||$('#camera-history [data-face-day].active')?.dataset.faceDay;
+  const version=routeVersion;
+  if(!await confirmFaceDelete(day?'Bắt đầu lại ngày này?':'Xóa khuôn mặt này?',
+    'Ảnh đại diện và dữ liệu nhận diện đã chọn sẽ được xóa vĩnh viễn. Camera sẽ dừng để tránh lưu lại ngay. Bạn có thể bật lại camera để kiểm tra lượt mới.'))return;
+  button.disabled=true;
+  try{
+    if(cameraStream||cameraRemote||cameraSession)await stopCamera();
+    const result=await api(day?'/faces?day='+encodeURIComponent(day):'/faces/'+encodeURIComponent(button.dataset.deleteFace),{method:'DELETE'});
+    if(version!==routeVersion)return;
+    if($('#camera-start'))$('#camera-start').disabled=me.role==='viewer';
+    if($('#camera-stop'))$('#camera-stop').disabled=true;
+    $('#camera-config')?.querySelectorAll('input,select').forEach(input=>input.disabled=false);
+    await cameraFaceHistory(selected,version);
+    toast(`Đã xóa ${result.deleted} khuôn mặt. Bật lại camera để thử lượt mới.`);
+  }catch(error){toast(error.message);button.disabled=false;}
+});

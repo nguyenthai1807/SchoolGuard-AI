@@ -78,6 +78,12 @@ class JobRequest(BaseModel):
     detect_interactions: bool = False
     detect_fire: bool = False
     recognize_faces: bool = False
+    detect_objects: bool = False
+    camera_rotation: Literal[0, 90, 180, 270] = 0
+    camera_mirror: bool = False
+    camera_url: str = Field(default="", max_length=2048, exclude=True)
+    camera_username: str = Field(default="", max_length=256, exclude=True)
+    camera_password: str = Field(default="", max_length=256, exclude=True)
     lying_seconds: float = Field(default=8, ge=2, le=120)
     crowd_threshold: int = Field(default=0, ge=0, le=200, strict=True)
     crowd_seconds: float = Field(default=3, ge=1, le=60)
@@ -91,6 +97,12 @@ class JobRequest(BaseModel):
         if self.recognize_faces and self.redact:
             raise ValueError("Không thể vừa che mờ người vừa lưu ảnh khuôn mặt.")
         return self
+
+
+class CameraView(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    rotation: Literal[0, 90, 180, 270] = 0
+    mirror: bool = False
 
 
 class Login(BaseModel):

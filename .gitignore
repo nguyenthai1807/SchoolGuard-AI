@@ -20,3 +20,9 @@ uploads/
 .test-output/
 .tmp/
 pytest-cache-files-*/
+
+# Local camera captures, logs and machine-specific UI checks
+/local/*.png
+/local/*.jpg
+/local/logs/
+/local/smoke-phone-ui.cjs

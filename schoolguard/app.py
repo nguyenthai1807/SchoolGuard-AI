@@ -1,3 +1,4 @@
+import base64
 import csv
 import io
 import json
@@ -6,7 +7,7 @@ import threading
 import time
 import uuid
 from collections import defaultdict, deque
-from contextlib import asynccontextmanager
+from contextlib import ExitStack, asynccontextmanager
 from datetime import date
 from pathlib import Path
 from urllib.parse import urlparse
@@ -24,7 +25,8 @@ from .faces import FaceLedger, FaceRecognizer, models_ready
 from .fire import FireDetector
 from .live import LiveAnalyzer
 from .media import Reader, index_dataset, jpeg, metadata
-from .schemas import AlertUpdate, JobRequest, Login, UserCreate
+from .network_camera import NetworkCamera, camera_credentials, validate_camera_url
+from .schemas import AlertUpdate, CameraView, JobRequest, Login, UserCreate
 from .telegram import TelegramNotifier
 from .worker import Worker
 
@@ -61,6 +63,9 @@ def create_app(settings=None, detector_factory=None, fire_factory=None, face_fac
             worker.start()
         yield
         with live_lock:
+            for session in live_sessions.values():
+                if session.get("source"):
+                    session["source"].close()
             live_sessions.clear()
         worker.close()
 
@@ -261,12 +266,34 @@ def create_app(settings=None, detector_factory=None, fire_factory=None, face_fac
             if event_manifest.is_file()
             else None
         )
+        phone_training = None
+        phone_dir = settings.runtime / 'phone-training'
+        status_path = phone_dir / 'training-status.json'
+        if status_path.is_file():
+            try:
+                phone_training = json.loads(status_path.read_text(encoding='utf-8'))
+                phone_report = phone_dir / 'report.json'
+                if phone_report.is_file():
+                    phone_training = json.loads(phone_report.read_text(encoding='utf-8'))
+                phone_training['epochs_completed'] = 0
+                progress = settings.runtime / 'training-runs/phone-body-v2/results.csv'
+                if progress.is_file():
+                    with progress.open(encoding='utf-8') as stream:
+                        for row in csv.DictReader(stream):
+                            try:
+                                float(row['time'])  # Ignore an incomplete CSV row being written.
+                                phone_training['epochs_completed'] = int(float(row['epoch']))
+                            except (KeyError, ValueError, TypeError):
+                                continue
+            except json.JSONDecodeError:
+                phone_training = {'status': 'updating'}
         return {
             "counts": counts,
             "runs": runs,
             "report": report,
             "candidate_available": (settings.models / "schoolguard-person-v1.pt").is_file(),
             "event_dataset": events,
+            "phone_training": phone_training,
         }
 
     @app.get("/api/sources")
@@ -347,6 +374,8 @@ def create_app(settings=None, detector_factory=None, fire_factory=None, face_fac
         source(payload.source_id)
         if not (settings.models / (payload.model + ".pt")).is_file():
             raise HTTPException(409, "Model chưa được tải. Chạy scripts/download_models.py.")
+        if payload.detect_objects and not (settings.models / "yolo11s.pt").is_file():
+            raise HTTPException(409, "Thiếu yolo11s.pt. Chạy python scripts/download_models.py.")
         if payload.detect_fire and not all(
             (settings.models / name).is_file() for name in ("fire-smoke-v1.onnx", "fire-model.json")
         ):
@@ -374,8 +403,15 @@ def create_app(settings=None, detector_factory=None, fire_factory=None, face_fac
     @app.post("/api/live/start", status_code=201)
     def start_live(payload: JobRequest, current=Depends(operator)):
         """Start one local webcam session using the same detector/rules as video jobs."""
+        if payload.camera_url:
+            try:
+                validate_camera_url(payload.camera_url)
+            except ValueError as exc:
+                raise HTTPException(422, str(exc)) from exc
         if detector_factory is None and not (settings.models / (payload.model + ".pt")).is_file():
             raise HTTPException(409, "Model chưa được tải. Chạy scripts/download_models.py.")
+        if payload.detect_objects and not (settings.models / "yolo11s.pt").is_file():
+            raise HTTPException(409, "Thiếu yolo11s.pt. Chạy python scripts/download_models.py.")
         if payload.detect_fire and not all(
             (settings.models / name).is_file()
             for name in ("fire-smoke-v1.onnx", "fire-model.json")
@@ -390,6 +426,8 @@ def create_app(settings=None, detector_factory=None, fire_factory=None, face_fac
                 for key in stale:
                     old = live_sessions.pop(key)
                     with old["lock"]:
+                        if old.get("source"):
+                            old["source"].close()
                         db.execute("UPDATE jobs SET status='completed',progress=1,finished_at=? "
                                    "WHERE id=?", (now(), key))
                 if live_sessions:
@@ -397,12 +435,28 @@ def create_app(settings=None, detector_factory=None, fire_factory=None, face_fac
             ident = uuid.uuid4().hex
             config = payload.model_copy(update={"source_id": ident, "max_seconds": 0})
             detector = (detector_factory or PersonDetector)(settings, config)
+            # Standard COCO detection can find people and objects in one pass.
+            combined = config.detect_objects and config.model in {"yolo11n", "yolo11s"}
+            if combined:
+                detector.classes = list(range(80))
             fire_detector = (fire_factory or FireDetector)(settings) if config.detect_fire else None
             face_ledger = (FaceLedger(db, settings.runtime, "live", ident,
                                       (face_factory or FaceRecognizer)(settings))
                            if config.recognize_faces else None)
-            analyzer = LiveAnalyzer(config, detector, fire_detector, face_ledger=face_ledger)
-            live_sessions[ident] = {"analyzer": analyzer, "lock": threading.Lock(),
+            object_detector = (PersonDetector(settings, config.model_copy(update={"model": "yolo11s", "image_size": 640}),
+                                              classes=list(range(1, 80)))
+                               if config.detect_objects and not combined else None)
+            analyzer = LiveAnalyzer(config, detector, fire_detector, face_ledger=face_ledger,
+                                    object_detector=object_detector)
+            try:
+                network_source = NetworkCamera(camera_credentials(payload.camera_url, payload.camera_username,
+                                                                  payload.camera_password)) if payload.camera_url else None
+            except ValueError as exc:
+                raise HTTPException(422, str(exc)) from exc
+            if network_source:
+                network_source.rotation = config.camera_rotation
+                network_source.mirror = config.camera_mirror
+            live_sessions[ident] = {"source": network_source, "analyzer": analyzer, "lock": threading.RLock(),
                                     "user_id": current["id"], "last_seen": time.monotonic()}
             with db.connect() as conn:
                 conn.execute("INSERT INTO sources VALUES(?,?,?,?,?)",
@@ -463,6 +517,62 @@ def create_app(settings=None, detector_factory=None, fire_factory=None, face_fac
                         db.one("SELECT count(*) n FROM alerts WHERE job_id=?", (ident,))["n"], ident))
         return result
 
+    def remote_session(ident, current):
+        session = live_sessions.get(ident)
+        if not session:
+            raise HTTPException(404, 'Phiên camera không còn chạy.')
+        if current['id'] != session['user_id'] and current['role'] != 'admin':
+            raise HTTPException(403, 'Không phải phiên camera của bạn.')
+        if not session.get('source'):
+            raise HTTPException(422, 'Phiên này không sử dụng camera mạng.')
+        return session
+
+    @app.get('/api/live/{ident}/preview')
+    def remote_camera_preview(ident: str, current=Depends(operator)):
+        session = remote_session(ident, current)
+        try:
+            data = session['source'].jpeg()
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        session['last_seen'] = time.monotonic()
+        return Response(data, media_type='image/jpeg', headers={'Cache-Control': 'no-store'})
+
+    @app.patch('/api/live/{ident}/view')
+    def remote_camera_view(ident: str, payload: CameraView, current=Depends(operator)):
+        session = remote_session(ident, current)
+        with session['lock']:
+            if ident not in live_sessions:
+                raise HTTPException(404, 'Phiên camera không còn chạy.')
+            analyzer = session['analyzer']
+            if analyzer.config.zones:
+                raise HTTPException(409, 'Dừng camera và vẽ lại vùng trước khi đổi hướng hình.')
+            session['source'].set_view(payload.rotation, payload.mirror)
+            analyzer.config.camera_rotation = payload.rotation
+            analyzer.config.camera_mirror = payload.mirror
+            analyzer.reset_view()
+            session['last_seen'] = time.monotonic()
+            db.execute('UPDATE jobs SET config=? WHERE id=?', (analyzer.config.model_dump_json(), ident))
+        return payload.model_dump()
+
+    @app.post('/api/live/{ident}/remote-frame')
+    def remote_camera_frame(ident: str, current=Depends(operator)):
+        session = remote_session(ident, current)
+        # Keep orientation changes atomic with frame capture and inference.
+        with session['lock']:
+            try:
+                data = session['source'].jpeg()
+            except ValueError as exc:
+                raise HTTPException(422, str(exc)) from exc
+            from starlette.datastructures import Headers
+            file = UploadFile(io.BytesIO(data), filename='camera.jpg',
+                              headers=Headers({'content-type': 'image/jpeg'}))
+            try:
+                result = analyze_live_frame(ident, file, current)
+            finally:
+                file.file.close()
+            result['preview'] = base64.b64encode(data).decode('ascii')
+            return result
+
     @app.post("/api/live/{ident}/stop")
     def stop_live(ident: str, current=Depends(operator)):
         with live_lock:
@@ -473,6 +583,8 @@ def create_app(settings=None, detector_factory=None, fire_factory=None, face_fac
                 raise HTTPException(403, "Không phải phiên camera của bạn.")
             with session["lock"]:
                 live_sessions.pop(ident)
+                if session.get("source"):
+                    session["source"].close()
                 db.execute("UPDATE jobs SET status='completed',progress=1,finished_at=? WHERE id=?",
                            (now(), ident))
         db.audit(current["id"], "stop_live", ident)
@@ -555,6 +667,43 @@ def create_app(settings=None, detector_factory=None, fire_factory=None, face_fac
             " ORDER BY ordinal LIMIT ? OFFSET ?", (*args, limit, offset)
         )
         return {"items": rows, "total": db.one("SELECT count(*) n FROM faces " + where, args)["n"]}
+
+    def remove_live_faces(ident="", day="", current=None):
+        if day:
+            try:
+                if date.fromisoformat(day).isoformat() != day:
+                    raise ValueError
+            except ValueError as exc:
+                raise HTTPException(422, "Ngày phải có dạng YYYY-MM-DD.") from exc
+        with live_lock, ExitStack() as stack:
+            for session in live_sessions.values():
+                stack.enter_context(session['lock'])
+            where, args = ("id=?", (ident,)) if ident else ("day=?", (day,))
+            rows = db.all("SELECT id,image FROM faces WHERE kind='live' AND " + where, args)
+            if ident and not rows:
+                raise HTTPException(404, "Không tìm thấy khuôn mặt webcam.")
+            db.execute("DELETE FROM faces WHERE kind='live' AND " + where, args)
+            for row in rows:
+                if row['image'] == row['id'] + '.jpg' and all(c in '0123456789abcdef' for c in row['id']):
+                    (settings.runtime / 'faces' / row['image']).unlink(missing_ok=True)
+            for session in live_sessions.values():
+                analyzer = session['analyzer']
+                if analyzer.face_ledger:
+                    analyzer.face_ledger.scope = None
+                    analyzer.face_ledger.refresh_scope()
+                    analyzer.face_state = {'visible': [], 'total': len(analyzer.face_ledger.records),
+                                           'day': analyzer.face_ledger.day}
+                    analyzer.last_face = -10.0
+        db.audit(current['id'], 'delete_live_faces', ident or day)
+        return {'deleted': len(rows)}
+
+    @app.delete('/api/faces')
+    def delete_face_day(day: str, current=Depends(operator)):
+        return remove_live_faces(day=day, current=current)
+
+    @app.delete('/api/faces/{ident}')
+    def delete_face(ident: str, current=Depends(operator)):
+        return remove_live_faces(ident=ident, current=current)
 
     @app.get("/api/faces/{ident}/image")
     def face_image(ident: str, current=Depends(user)):

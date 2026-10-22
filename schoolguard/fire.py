@@ -97,8 +97,10 @@ class FireDetector:
 
 
 class FireEngine:
-    def __init__(self, dwell=2.0, max_gap=1.5, cooldown=15.0):
+    def __init__(self, dwell=2.0, max_gap=1.5, cooldown=15.0, smoke_dwell=None):
         self.dwell, self.max_gap, self.cooldown = dwell, max_gap, cooldown
+        self.smoke_dwell = dwell if smoke_dwell is None else smoke_dwell
+        self.confirmed = []
         self.tracks, self.next_id, self.last_time = {}, -100, -1.0
         self.last_sent_by_kind = {}
 
@@ -106,6 +108,7 @@ class FireEngine:
         if timestamp <= self.last_time:
             raise ValueError("Frame time must increase")
         self.last_time = timestamp
+        self.confirmed = []
         self.tracks = {
             k: v for k, v in self.tracks.items() if timestamp - v["last"] <= self.max_gap
         }
@@ -131,7 +134,11 @@ class FireEngine:
             state.update(bbox=d["bbox"], last=timestamp, count=state["count"] + 1)
             used.add(track)
             duration = timestamp - state["start"]
-            if not state["emitted"] and state["count"] >= 3 and duration + 1e-9 >= self.dwell:
+            required = self.smoke_dwell if d['kind'] == 'smoke' else self.dwell
+            confirmed = state['count'] >= 3 and duration + 1e-9 >= required
+            if confirmed:
+                self.confirmed.append(dict(d))
+            if not state["emitted"] and confirmed:
                 state["emitted"] = True
                 if timestamp - self.last_sent_by_kind.get(d["kind"], -1000) < self.cooldown:
                     continue
@@ -150,6 +157,37 @@ class FireEngine:
         # Explicit absence resets immediately; missing detections are not positive evidence.
         self.tracks = {k: v for k, v in self.tracks.items() if k in used}
         return alerts
+
+
+def filter_hazards(detections, people):
+    """Reject weak smoke and head-confined smoke without nearby fire evidence.
+
+    This is a false-positive heuristic, not a semantic hair classifier. Smoke
+    extending outside the head remains eligible for temporal confirmation.
+    """
+    kept = []
+    fires = [d for d in detections if d['kind'] == 'fire' and d['confidence'] >= .7]
+    for d in detections:
+        if d['confidence'] < (.75 if d['kind'] == 'smoke' else .7):
+            continue
+        if d['kind'] == 'smoke':
+            a, b, c, e = d['bbox']
+            area = max(1e-9, (c-a)*(e-b))
+            head_confined = False
+            for person in people:
+                if person.get('class_id', 0) != 0:
+                    continue
+                x1, y1, x2, y2 = person['bbox']
+                # Conservative upper quarter of a person box, including hair.
+                head_bottom = y1 + (y2-y1)*.25
+                intersection = max(0, min(c, x2)-max(a, x1))*max(0, min(e, head_bottom)-max(b, y1))
+                if intersection/area >= .8:
+                    head_confined = True
+                    break
+            if head_confined and not any(overlap(d['bbox'], f['bbox']) >= .1 for f in fires):
+                continue
+        kept.append(d)
+    return kept
 
 
 def draw_hazards(image, detections):

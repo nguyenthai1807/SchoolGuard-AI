@@ -79,7 +79,7 @@ legend { color: var(--mint); font-weight: 700; padding: 0 7px; }
 .login-card input { padding: 12px; }
 .login-card button { padding: 14px; }
 .login-card code { color: #d8ece7; }
-.camera-layout { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(300px, .9fr); gap: 20px; }
+.camera-layout { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(300px, .9fr); gap: 20px; align-items: start; }
 .camera-stage { position: relative; background: #06121a; border-radius: 12px; min-height: 300px; display: grid; place-items: center; overflow: hidden; }
 .camera-stage video { width: 100%; max-height: 68vh; border: 0; border-radius: 0; }
 .camera-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
@@ -119,3 +119,29 @@ legend { color: var(--mint); font-weight: 700; padding: 0 7px; }
 @media(max-width:800px) { aside { position: static; width: auto; padding: 15px; } .brand { display: none; } .nav-label, .aside-bottom { display: none; } nav { display: flex; overflow-x: auto; } nav a { white-space: nowrap; } main { margin: 0; padding: 22px; } .login { grid-template-columns: 1fr; } .login-intro { gap: 24px; } .intro-brand { display: none; } .login-intro h1 { font-size: 42px; } .login-card { max-width: none; } .metrics { grid-template-columns: repeat(2, 1fr); } }
 @media(max-width:540px) { .login { padding: 18px; } .login-intro p { font-size: 15px; } .intro-points { display: none; } .panel { padding: 17px; } main { padding: 16px; } header .tag { display: none; } .metrics { gap: 10px; } .metric { min-height: 108px; } .metric strong { font-size: 29px; } }
 @media(prefers-reduced-motion:reduce) { button { transition: none; } }
+
+/* Face testing controls */
+.face-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.face-reset,.face-delete{border:1px solid #9b59604d;background:#b4586214;color:#f3a9ae;border-radius:9px;font-size:12px;padding:7px 11px;transition:background .18s,border-color .18s}
+.face-reset:hover,.face-delete:hover{background:#b4586230;border-color:#b8757d}
+.face-card-info{flex:1;min-width:0}.face-delete{margin-top:10px;display:inline-flex;gap:6px;align-items:center}
+.face-card{transition:border-color .18s,box-shadow .18s}.face-card:hover{border-color:#4d7078;box-shadow:0 4px 18px #0002}
+.face-dialog{width:min(440px,calc(100vw - 32px));padding:28px;border:1px solid #3c5064;border-radius:18px;background:#111e2b;color:#e1eaf3;box-shadow:0 24px 100px #0009}
+.face-dialog::backdrop{background:#030b16b8;backdrop-filter:blur(5px)}
+.face-dialog-icon{display:grid;place-items:center;width:46px;height:46px;border-radius:14px;background:#b4586226;color:#f3a9ae;font-size:28px;margin-bottom:18px}
+.face-dialog h2{font-size:21px;margin-bottom:12px}.face-dialog p{color:#a7b9cb;line-height:1.7;margin-bottom:24px}.face-dialog .actions{justify-content:flex-end}
+
+#camera-remote-preview{width:100%;height:100%;object-fit:contain;display:block;background:#050d16}#network-camera-fields{padding:14px;border:1px solid #365665;border-radius:12px;background:#0b1925;margin-bottom:16px}#network-camera-fields .help{margin-bottom:0}
+
+#camera-remote-preview{width:100%;height:auto;max-height:68vh;object-fit:contain}
+.camera-view-tools{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:14px;padding:12px;background:#0b222c;border:1px solid #31545f;border-radius:12px}
+.camera-view-tools>span{font-size:12px;color:var(--muted);margin-right:4px}
+.camera-view-tools button{padding:8px 12px;font-size:12px;min-height:36px}
+.camera-view-tools button[aria-pressed="true"]{background:#246356;color:#d2ffed;border-color:#69ccb0}
+.camera-ai-panel{margin-top:16px;border-top:1px solid #31545f;padding-top:14px}
+.camera-ai-panel summary{cursor:pointer;color:#a9e7d8;font-weight:600;padding:6px 0}
+.camera-ai-panel .camera-stage{min-height:0}
+#camera-ai-image{display:block;width:100%;max-height:52vh;object-fit:contain}
+#camera-ai-image:not([src]){display:none}
+.camera-legend{display:flex;flex-wrap:wrap;gap:18px;margin:12px 0;font-size:12px;font-weight:600}
+.legend-person{color:#55c7ff}.legend-object{color:#ffbd59}
