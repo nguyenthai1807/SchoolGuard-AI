@@ -1,0 +1,17 @@
+{
+  "source": "https://huggingface.co/fiacecson20/cctv-ai-fire-smoke",
+  "revision": "343990e42d99a5d27e9f35fc7c80880dc5f43f45",
+  "sha256": "f2699b753e78be8d392bfa63e64bf102ea3ceb8b6086a59dfd8192b61a0c6fad",
+  "input_size": 320,
+  "classes": [
+    "fire",
+    "smoke"
+  ],
+  "output_shape": [
+    1,
+    6,
+    2100
+  ],
+  "status": "experimental-pretrained-not-campus-validated",
+  "license_note": "Uploader declares MIT weights; source dataset CC-BY 4.0; Ultralytics base AGPL-3.0. Review before redistribution/commercial use."
+}

@@ -1,0 +1,6 @@
+-r requirements.txt
+pytest
+httpx
+ruff
+onnx>=1.20,<2
+onnxruntime>=1.20,<2

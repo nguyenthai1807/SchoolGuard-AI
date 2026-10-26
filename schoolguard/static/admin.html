@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#101d28">
+  <title>LH25 ADMIN · Quản trị dịch vụ</title>
+  <link rel="icon" type="image/jpeg" href="/static/brand-lh25-original.jpg">
+  <link rel="stylesheet" href="/static/admin.css">
+  <link rel="stylesheet" href="/static/admin-billing.css?v=ops-20261025-1">
+  <link rel="stylesheet" href="/static/brand.css?v=20261025-1">
+  <script src="/static/admin.js?v=ops-20261025-1" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Đến nội dung chính</a>
+  <header class="topbar"><a class="brand" href="/admin"><img class="brand-photo" src="/static/brand-lh25-original.jpg" alt=""><span>LH25 <b>ADMIN</b><small>Lock Home 24 + 1 / 7</small></span></a><nav aria-label="Điều hướng"><a href="/#overview">Ứng dụng ↗</a><a href="/store">LH25 STORE ↗</a></nav></header>
+  <main id="main" class="wrap">
+    <div class="heading"><div><span class="eyebrow">CONTROL ROOM / LH25</span><h1>Toàn cảnh dịch vụ</h1><p>Tài khoản, gói, giao dịch và các báo cáo cần kiểm tra.</p></div><button id="refresh" type="button">Làm mới dữ liệu</button></div>
+    <p id="message" role="status" aria-live="polite">Đang tải dữ liệu…</p>
+    <section class="metrics" aria-label="Chỉ số tổng quan"><article><span>Tài khoản Free</span><strong id="free-count">—</strong></article><article><span>Tài khoản Pro</span><strong id="pro-count">—</strong></article><article><span>Đơn chờ thanh toán</span><strong id="pending-count">—</strong></article><article><span>Cảnh báo báo nhầm</span><strong id="false-count">—</strong></article></section>
+    <section class="panel"><div class="panel-heading"><div><span class="eyebrow">01 / ACCOUNTS</span><h2>Khách hàng</h2></div><span id="user-count" class="pill">—</span></div><div class="table-scroll"><table><thead><tr><th>Tài khoản</th><th>Email</th><th>Gói</th><th>Hết hạn</th><th>Telegram</th></tr></thead><tbody id="users"><tr><td colspan="5">Đang tải…</td></tr></tbody></table></div></section>
+    <section class="panel"><div class="panel-heading"><div><span class="eyebrow">02 / BILLING</span><h2>Đơn hàng</h2></div><span id="payment-mode" class="pill">—</span></div><p id="billing-hint" class="hint">Chỉ mở Pro sau khi đối chiếu giao dịch thật trên sao kê ngân hàng; không dùng ảnh biên lai làm bằng chứng duy nhất.</p><div class="table-scroll"><table><thead><tr><th>Khách</th><th>Mã đơn / nội dung CK</th><th>Số tiền</th><th>Trạng thái</th><th>Ngày tạo</th><th>Đối soát</th></tr></thead><tbody id="orders"><tr><td colspan="6">Đang tải…</td></tr></tbody></table></div></section>
+    <section class="panel"><div class="panel-heading"><div><span class="eyebrow">03 / QUALITY</span><h2>Phản hồi cảnh báo nhầm</h2></div><a href="/#alerts">Mở trang cảnh báo ↗</a></div><div id="reviews" class="review-list">Đang tải…</div></section>
+    <p class="footnote">Chỉ tài khoản Admin đã đăng nhập mới truy cập được trang và các API này. Kết quả AI cần người xem ảnh bằng chứng trước khi kết luận.</p>
+    <section class="panel" id="operations"><div class="panel-heading"><h2>Cấu hình vận hành</h2><span id="release-state" class="pill">Đang kiểm tra</span></div><p id="release-note" class="hint">Kiểm tra riêng cấu hình chạy thử trên máy và các điều kiện mở dịch vụ công khai.</p><div class="ops-columns"><div><h3>Chạy thử trên máy</h3><div id="local-checks" class="ops-checks">Đang kiểm tra…</div></div><div><h3>Triển khai công khai</h3><div id="release-checks" class="ops-checks">Đang kiểm tra…</div></div></div></section>
+    <section class="panel"><h2>Thông báo thanh toán</h2><p class="hint">Email và Telegram được gửi sau khi mở Pro. Nếu mất mạng, hệ thống tự thử lại tối đa 5 lần.</p><div id="receipts" class="review-list"></div></section>
+  </main>
+</body>
+</html>

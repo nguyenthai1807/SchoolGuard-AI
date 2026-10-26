@@ -1,0 +1,13 @@
+# Pro Local: đối soát chuyển khoản thủ công
+
+Luồng pilot trên `http://localhost:8770` tạo link thanh toán payOS riêng cho đơn ngay khi khách bấm mua, nhưng **không tự cấp Pro**. Admin phải đối soát rồi duyệt. Tài khoản payOS của chủ dự án đã liên kết MBBank; LH25 không tự suy đoán số tài khoản ngân hàng hoặc thay thế thông tin trên trang payOS. Gói Free vẫn dùng được sau khi khách tạo tài khoản và hoàn tất các bước xác minh đang bật trong LH25.
+
+1. Giữ `LH25_PAYOS_ENABLED=false`. Khách đăng nhập Google tại `http://localhost:8770/store`, bấm **Mua Pro**. LH25 dùng API payOS tạo link riêng 29.000₫ cho đơn mới và chuyển khách đến trang payOS hiển thị QR. Đây là **giao dịch thật** nếu khách quét và xác nhận chuyển tiền. Đơn 149.000₫ hoặc 49.000₫ đã tạo trước ngày đổi giá không được sửa số tiền; Admin phải đối soát hoặc từ chối đơn cũ rồi khách mới tạo đơn mới.
+2. Khách kiểm tra số tiền và người nhận trên payOS, thanh toán qua ứng dụng ngân hàng, quay lại **Gói của tôi** và bấm **Tôi đã thanh toán**. Nút này chỉ báo cho Admin; tài khoản vẫn ở Free. Nếu link lỗi, chưa thanh toán lại hoặc tự chuyển qua nơi khác.
+3. Admin mở `/admin`, xem đơn, số tiền, mã LH25 và link payOS. Kiểm tra giao dịch **Đã thanh toán** trong tài khoản payOS của mình, so khớp mã đơn và mã giao dịch thật, rồi nhấn **Đã nhận tiền · mở Pro**. Không dùng lời báo hoặc ảnh chụp của khách làm bằng chứng duy nhất. Nếu không khớp, không kích hoạt.
+4. Nếu link chưa được tạo tự động (ví dụ yêu cầu cũ hoặc ngoài localhost), Admin có thể tạo link riêng trong `my.payos.vn` với đúng số tiền/mã đơn và gắn vào đơn LH25. Một link không được dùng cho hai đơn.
+5. LH25 ghi người phê duyệt và mã giao dịch; mã giao dịch không thể dùng lại cho đơn khác. Pro có hiệu lực 30 ngày (cộng dồn thời gian Pro còn lại). Hệ thống xếp hàng gửi **email hướng dẫn Pro** đến email đã xác minh của người mua và thông báo Telegram đã liên kết; kiểm tra trạng thái thực gửi tại **Thông báo thanh toán** trong `/admin`. Việc xếp hàng không đồng nghĩa email đã đến.
+
+Nếu về sau muốn nhận chuyển khoản trực tiếp **không qua link payOS**, chủ dự án mới cần điền cả ba biến `LH25_MANUAL_BANK_NAME`, `LH25_MANUAL_BANK_ACCOUNT`, `LH25_MANUAL_BANK_RECIPIENT` trong `.env` và khởi động lại LH25. Không đoán số tài khoản từ việc liên kết payOS và không commit `.env`.
+
+Return URL `localhost` chỉ hoạt động đúng khi người mua thử trên **cùng máy** đang chạy LH25. Trước khi nhận tiền thật từ khách công khai, cần tên miền HTTPS cố định, cấu hình return/cancel URL cho domain đó, kiểm thử link payOS và người nhận, sao lưu dữ liệu đơn hàng, điều khoản/hoàn tiền và quy trình hỗ trợ. Chạy local hoặc tunnel thử nghiệm không tương đương một dịch vụ thương mại công khai.

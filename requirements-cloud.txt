@@ -1,0 +1,2 @@
+# Future cloud-auth boundary only. Do not deploy the local FastAPI app unchanged.
+firebase-admin==7.7.0

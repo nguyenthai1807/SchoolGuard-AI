@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+python-multipart
+sqlalchemy
+opencv-python
+Pillow>=10,<13
+ultralytics>=8.4.182,<9
+requests
+google-auth>=2.40,<3
+imageio-ffmpeg>=0.6,<1
+lap>=0.5.12,<1
+-e ./ai-service

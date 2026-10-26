@@ -1,0 +1,1341 @@
+{
+  "candidate": "schoolguard-person-v1",
+  "default_model": "yolo11s",
+  "promoted": false,
+  "iou_threshold": 0.5,
+  "confidence": 0.35,
+  "image_size": 640,
+  "results": [
+    {
+      "model": "yolo11n",
+      "overall": {
+        "tp": 94,
+        "fp": 11,
+        "fn": 26,
+        "precision": 0.8952380952380953,
+        "recall": 0.7833333333333333,
+        "f1": 0.8355555555555555
+      },
+      "slices": {
+        "coco128": {
+          "tp": 25,
+          "fp": 0,
+          "fn": 23,
+          "precision": 1.0,
+          "recall": 0.5208333333333334,
+          "f1": 0.684931506849315
+        },
+        "penn-fudan": {
+          "tp": 55,
+          "fp": 10,
+          "fn": 0,
+          "precision": 0.8461538461538461,
+          "recall": 1.0,
+          "f1": 0.9166666666666666
+        },
+        "shanghaitech": {
+          "tp": 14,
+          "fp": 1,
+          "fn": 3,
+          "precision": 0.9333333333333333,
+          "recall": 0.8235294117647058,
+          "f1": 0.8749999999999999
+        }
+      },
+      "mean_latency_ms": 102.08253199933097,
+      "images": 50,
+      "details": [
+        {
+          "name": "coco-000000000307",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 141.4313999703154
+        },
+        {
+          "name": "coco-000000000581",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 155.40080005303025
+        },
+        {
+          "name": "coco-000000000138",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 139.46059998124838
+        },
+        {
+          "name": "coco-000000000151",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 1,
+          "latency_ms": 130.6299000279978
+        },
+        {
+          "name": "coco-000000000315",
+          "source": "coco128",
+          "tp": 5,
+          "fp": 0,
+          "fn": 8,
+          "latency_ms": 131.7886000033468
+        },
+        {
+          "name": "coco-000000000154",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 109.80839998228475
+        },
+        {
+          "name": "coco-000000000443",
+          "source": "coco128",
+          "tp": 1,
+          "fp": 0,
+          "fn": 2,
+          "latency_ms": 70.40199998300523
+        },
+        {
+          "name": "coco-000000000584",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 65.99909998476505
+        },
+        {
+          "name": "coco-000000000446",
+          "source": "coco128",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 73.33980000112206
+        },
+        {
+          "name": "coco-000000000510",
+          "source": "coco128",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 77.4993000086397
+        },
+        {
+          "name": "coco-000000000474",
+          "source": "coco128",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 76.7407999956049
+        },
+        {
+          "name": "coco-000000000572",
+          "source": "coco128",
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 95.26679996633902
+        },
+        {
+          "name": "coco-000000000089",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 81.10329997725785
+        },
+        {
+          "name": "coco-000000000508",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 75.9210999822244
+        },
+        {
+          "name": "coco-000000000395",
+          "source": "coco128",
+          "tp": 4,
+          "fp": 0,
+          "fn": 7,
+          "latency_ms": 151.61649999208748
+        },
+        {
+          "name": "coco-000000000208",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 101.99510003440082
+        },
+        {
+          "name": "coco-000000000419",
+          "source": "coco128",
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 82.94520003255457
+        },
+        {
+          "name": "coco-000000000357",
+          "source": "coco128",
+          "tp": 8,
+          "fp": 0,
+          "fn": 5,
+          "latency_ms": 98.0443000444211
+        },
+        {
+          "name": "coco-000000000143",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 155.0285000121221
+        },
+        {
+          "name": "coco-000000000562",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 77.78739999048412
+        },
+        {
+          "name": "penn-FudanPed00063",
+          "source": "penn-fudan",
+          "tp": 5,
+          "fp": 1,
+          "fn": 0,
+          "latency_ms": 84.46300000650808
+        },
+        {
+          "name": "penn-FudanPed00064",
+          "source": "penn-fudan",
+          "tp": 3,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 134.0928000281565
+        },
+        {
+          "name": "penn-FudanPed00065",
+          "source": "penn-fudan",
+          "tp": 5,
+          "fp": 1,
+          "fn": 0,
+          "latency_ms": 88.91290001338348
+        },
+        {
+          "name": "penn-FudanPed00066",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 158.47959998063743
+        },
+        {
+          "name": "penn-FudanPed00067",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 101.73379996558651
+        },
+        {
+          "name": "penn-FudanPed00068",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 92.80630003195256
+        },
+        {
+          "name": "penn-FudanPed00069",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 87.11600000970066
+        },
+        {
+          "name": "penn-FudanPed00070",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 89.63760000187904
+        },
+        {
+          "name": "penn-FudanPed00071",
+          "source": "penn-fudan",
+          "tp": 3,
+          "fp": 5,
+          "fn": 0,
+          "latency_ms": 91.7520999792032
+        },
+        {
+          "name": "penn-FudanPed00072",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 106.93179996451363
+        },
+        {
+          "name": "penn-FudanPed00073",
+          "source": "penn-fudan",
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 134.5440999721177
+        },
+        {
+          "name": "penn-FudanPed00074",
+          "source": "penn-fudan",
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 106.46470001665875
+        },
+        {
+          "name": "penn-PennPed00082",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 125.26479997904971
+        },
+        {
+          "name": "penn-PennPed00083",
+          "source": "penn-fudan",
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 164.5709000295028
+        },
+        {
+          "name": "penn-PennPed00084",
+          "source": "penn-fudan",
+          "tp": 3,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 108.41299995081499
+        },
+        {
+          "name": "penn-PennPed00085",
+          "source": "penn-fudan",
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 91.53050003806129
+        },
+        {
+          "name": "penn-PennPed00086",
+          "source": "penn-fudan",
+          "tp": 5,
+          "fp": 1,
+          "fn": 0,
+          "latency_ms": 75.78299997840077
+        },
+        {
+          "name": "penn-PennPed00087",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 99.12240004632622
+        },
+        {
+          "name": "penn-PennPed00088",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 130.03579998621717
+        },
+        {
+          "name": "penn-PennPed00089",
+          "source": "penn-fudan",
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 98.88710000086576
+        },
+        {
+          "name": "penn-PennPed00090",
+          "source": "penn-fudan",
+          "tp": 3,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 70.44839998707175
+        },
+        {
+          "name": "penn-PennPed00091",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 84.80780001264066
+        },
+        {
+          "name": "penn-PennPed00092",
+          "source": "penn-fudan",
+          "tp": 2,
+          "fp": 1,
+          "fn": 0,
+          "latency_ms": 77.06149999285117
+        },
+        {
+          "name": "penn-PennPed00093",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 90.39079997455701
+        },
+        {
+          "name": "penn-PennPed00094",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 85.97960002953187
+        },
+        {
+          "name": "penn-PennPed00095",
+          "source": "penn-fudan",
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 71.22310000704601
+        },
+        {
+          "name": "penn-PennPed00096",
+          "source": "penn-fudan",
+          "tp": 2,
+          "fp": 1,
+          "fn": 0,
+          "latency_ms": 143.6946999747306
+        },
+        {
+          "name": "shanghai-08_001-48",
+          "source": "shanghaitech",
+          "tp": 8,
+          "fp": 0,
+          "fn": 1,
+          "latency_ms": 70.13020000886172
+        },
+        {
+          "name": "shanghai-09_001-48",
+          "source": "shanghaitech",
+          "tp": 4,
+          "fp": 0,
+          "fn": 1,
+          "latency_ms": 68.31609999062493
+        },
+        {
+          "name": "shanghai-12_001-50",
+          "source": "shanghaitech",
+          "tp": 2,
+          "fp": 1,
+          "fn": 1,
+          "latency_ms": 79.32329998584464
+        }
+      ]
+    },
+    {
+      "model": "yolo11s",
+      "overall": {
+        "tp": 99,
+        "fp": 19,
+        "fn": 21,
+        "precision": 0.8389830508474576,
+        "recall": 0.825,
+        "f1": 0.8319327731092436
+      },
+      "slices": {
+        "coco128": {
+          "tp": 29,
+          "fp": 4,
+          "fn": 19,
+          "precision": 0.8787878787878788,
+          "recall": 0.6041666666666666,
+          "f1": 0.7160493827160493
+        },
+        "penn-fudan": {
+          "tp": 55,
+          "fp": 15,
+          "fn": 0,
+          "precision": 0.7857142857142857,
+          "recall": 1.0,
+          "f1": 0.88
+        },
+        "shanghaitech": {
+          "tp": 15,
+          "fp": 0,
+          "fn": 2,
+          "precision": 1.0,
+          "recall": 0.8823529411764706,
+          "f1": 0.9375
+        }
+      },
+      "mean_latency_ms": 201.13531799986959,
+      "images": 50,
+      "details": [
+        {
+          "name": "coco-000000000307",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 207.02570001594722
+        },
+        {
+          "name": "coco-000000000581",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 252.93560000136495
+        },
+        {
+          "name": "coco-000000000138",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 235.25940004037693
+        },
+        {
+          "name": "coco-000000000151",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 1,
+          "latency_ms": 203.76649999525398
+        },
+        {
+          "name": "coco-000000000315",
+          "source": "coco128",
+          "tp": 6,
+          "fp": 1,
+          "fn": 7,
+          "latency_ms": 195.48829999985173
+        },
+        {
+          "name": "coco-000000000154",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 188.49329999648035
+        },
+        {
+          "name": "coco-000000000443",
+          "source": "coco128",
+          "tp": 3,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 156.86260000802577
+        },
+        {
+          "name": "coco-000000000584",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 155.10979999089614
+        },
+        {
+          "name": "coco-000000000446",
+          "source": "coco128",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 176.4977999846451
+        },
+        {
+          "name": "coco-000000000510",
+          "source": "coco128",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 197.55479996092618
+        },
+        {
+          "name": "coco-000000000474",
+          "source": "coco128",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 152.66620001057163
+        },
+        {
+          "name": "coco-000000000572",
+          "source": "coco128",
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 155.88690002914518
+        },
+        {
+          "name": "coco-000000000089",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 168.62399998353794
+        },
+        {
+          "name": "coco-000000000508",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 154.96279997751117
+        },
+        {
+          "name": "coco-000000000395",
+          "source": "coco128",
+          "tp": 5,
+          "fp": 3,
+          "fn": 6,
+          "latency_ms": 278.0907999840565
+        },
+        {
+          "name": "coco-000000000208",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 161.009700037539
+        },
+        {
+          "name": "coco-000000000419",
+          "source": "coco128",
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 167.325799993705
+        },
+        {
+          "name": "coco-000000000357",
+          "source": "coco128",
+          "tp": 8,
+          "fp": 0,
+          "fn": 5,
+          "latency_ms": 130.61990001006052
+        },
+        {
+          "name": "coco-000000000143",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 233.02200000034645
+        },
+        {
+          "name": "coco-000000000562",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 154.7279999940656
+        },
+        {
+          "name": "penn-FudanPed00063",
+          "source": "penn-fudan",
+          "tp": 5,
+          "fp": 1,
+          "fn": 0,
+          "latency_ms": 169.4747000001371
+        },
+        {
+          "name": "penn-FudanPed00064",
+          "source": "penn-fudan",
+          "tp": 3,
+          "fp": 1,
+          "fn": 0,
+          "latency_ms": 213.81169999949634
+        },
+        {
+          "name": "penn-FudanPed00065",
+          "source": "penn-fudan",
+          "tp": 5,
+          "fp": 1,
+          "fn": 0,
+          "latency_ms": 175.51209998782724
+        },
+        {
+          "name": "penn-FudanPed00066",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 259.9133000476286
+        },
+        {
+          "name": "penn-FudanPed00067",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 197.71390000823885
+        },
+        {
+          "name": "penn-FudanPed00068",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 229.64409994892776
+        },
+        {
+          "name": "penn-FudanPed00069",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 219.5575999794528
+        },
+        {
+          "name": "penn-FudanPed00070",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 226.23999998904765
+        },
+        {
+          "name": "penn-FudanPed00071",
+          "source": "penn-fudan",
+          "tp": 3,
+          "fp": 4,
+          "fn": 0,
+          "latency_ms": 235.94029998639598
+        },
+        {
+          "name": "penn-FudanPed00072",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 191.25880004139617
+        },
+        {
+          "name": "penn-FudanPed00073",
+          "source": "penn-fudan",
+          "tp": 2,
+          "fp": 1,
+          "fn": 0,
+          "latency_ms": 159.20799999730662
+        },
+        {
+          "name": "penn-FudanPed00074",
+          "source": "penn-fudan",
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 190.24699996225536
+        },
+        {
+          "name": "penn-PennPed00082",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 175.56529998546466
+        },
+        {
+          "name": "penn-PennPed00083",
+          "source": "penn-fudan",
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 237.8446000511758
+        },
+        {
+          "name": "penn-PennPed00084",
+          "source": "penn-fudan",
+          "tp": 3,
+          "fp": 1,
+          "fn": 0,
+          "latency_ms": 204.55640001455322
+        },
+        {
+          "name": "penn-PennPed00085",
+          "source": "penn-fudan",
+          "tp": 2,
+          "fp": 1,
+          "fn": 0,
+          "latency_ms": 168.67309994995594
+        },
+        {
+          "name": "penn-PennPed00086",
+          "source": "penn-fudan",
+          "tp": 5,
+          "fp": 3,
+          "fn": 0,
+          "latency_ms": 156.48329997202381
+        },
+        {
+          "name": "penn-PennPed00087",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 189.2113999929279
+        },
+        {
+          "name": "penn-PennPed00088",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 189.62580000516027
+        },
+        {
+          "name": "penn-PennPed00089",
+          "source": "penn-fudan",
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 166.31800000322983
+        },
+        {
+          "name": "penn-PennPed00090",
+          "source": "penn-fudan",
+          "tp": 3,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 247.8728999849409
+        },
+        {
+          "name": "penn-PennPed00091",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 209.30240000598133
+        },
+        {
+          "name": "penn-PennPed00092",
+          "source": "penn-fudan",
+          "tp": 2,
+          "fp": 1,
+          "fn": 0,
+          "latency_ms": 214.55219999188557
+        },
+        {
+          "name": "penn-PennPed00093",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 213.70179997757077
+        },
+        {
+          "name": "penn-PennPed00094",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 346.7213000403717
+        },
+        {
+          "name": "penn-PennPed00095",
+          "source": "penn-fudan",
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 295.91779998736456
+        },
+        {
+          "name": "penn-PennPed00096",
+          "source": "penn-fudan",
+          "tp": 2,
+          "fp": 1,
+          "fn": 0,
+          "latency_ms": 284.1406000079587
+        },
+        {
+          "name": "shanghai-08_001-48",
+          "source": "shanghaitech",
+          "tp": 8,
+          "fp": 0,
+          "fn": 1,
+          "latency_ms": 169.38809998100623
+        },
+        {
+          "name": "shanghai-09_001-48",
+          "source": "shanghaitech",
+          "tp": 4,
+          "fp": 0,
+          "fn": 1,
+          "latency_ms": 259.84300003619865
+        },
+        {
+          "name": "shanghai-12_001-50",
+          "source": "shanghaitech",
+          "tp": 3,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 132.5965000432916
+        }
+      ]
+    },
+    {
+      "model": "schoolguard-person-v1",
+      "overall": {
+        "tp": 87,
+        "fp": 10,
+        "fn": 33,
+        "precision": 0.8969072164948454,
+        "recall": 0.725,
+        "f1": 0.8018433179723502
+      },
+      "slices": {
+        "coco128": {
+          "tp": 23,
+          "fp": 4,
+          "fn": 25,
+          "precision": 0.8518518518518519,
+          "recall": 0.4791666666666667,
+          "f1": 0.6133333333333334
+        },
+        "penn-fudan": {
+          "tp": 52,
+          "fp": 3,
+          "fn": 3,
+          "precision": 0.9454545454545454,
+          "recall": 0.9454545454545454,
+          "f1": 0.9454545454545454
+        },
+        "shanghaitech": {
+          "tp": 12,
+          "fp": 3,
+          "fn": 5,
+          "precision": 0.8,
+          "recall": 0.7058823529411765,
+          "f1": 0.7500000000000001
+        }
+      },
+      "mean_latency_ms": 110.42989399982616,
+      "images": 50,
+      "details": [
+        {
+          "name": "coco-000000000307",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 116.18110002018511
+        },
+        {
+          "name": "coco-000000000581",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 104.9944999977015
+        },
+        {
+          "name": "coco-000000000138",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 118.14600002253428
+        },
+        {
+          "name": "coco-000000000151",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 1,
+          "latency_ms": 137.012799968943
+        },
+        {
+          "name": "coco-000000000315",
+          "source": "coco128",
+          "tp": 3,
+          "fp": 1,
+          "fn": 10,
+          "latency_ms": 142.28740002727136
+        },
+        {
+          "name": "coco-000000000154",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 109.92940003052354
+        },
+        {
+          "name": "coco-000000000443",
+          "source": "coco128",
+          "tp": 1,
+          "fp": 1,
+          "fn": 2,
+          "latency_ms": 253.1173000461422
+        },
+        {
+          "name": "coco-000000000584",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 73.30509996972978
+        },
+        {
+          "name": "coco-000000000446",
+          "source": "coco128",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 67.70379998488352
+        },
+        {
+          "name": "coco-000000000510",
+          "source": "coco128",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 65.80859998939559
+        },
+        {
+          "name": "coco-000000000474",
+          "source": "coco128",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 72.14559998828918
+        },
+        {
+          "name": "coco-000000000572",
+          "source": "coco128",
+          "tp": 2,
+          "fp": 1,
+          "fn": 0,
+          "latency_ms": 71.02889998350292
+        },
+        {
+          "name": "coco-000000000089",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 71.46730000386015
+        },
+        {
+          "name": "coco-000000000508",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 73.77590000396594
+        },
+        {
+          "name": "coco-000000000395",
+          "source": "coco128",
+          "tp": 4,
+          "fp": 0,
+          "fn": 7,
+          "latency_ms": 251.70750002143905
+        },
+        {
+          "name": "coco-000000000208",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 1,
+          "fn": 0,
+          "latency_ms": 138.45059997402132
+        },
+        {
+          "name": "coco-000000000419",
+          "source": "coco128",
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 73.99509998504072
+        },
+        {
+          "name": "coco-000000000357",
+          "source": "coco128",
+          "tp": 8,
+          "fp": 0,
+          "fn": 5,
+          "latency_ms": 86.7885000188835
+        },
+        {
+          "name": "coco-000000000143",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 166.00849997485057
+        },
+        {
+          "name": "coco-000000000562",
+          "source": "coco128",
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 85.42379998834804
+        },
+        {
+          "name": "penn-FudanPed00063",
+          "source": "penn-fudan",
+          "tp": 4,
+          "fp": 1,
+          "fn": 1,
+          "latency_ms": 90.24879999924451
+        },
+        {
+          "name": "penn-FudanPed00064",
+          "source": "penn-fudan",
+          "tp": 3,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 174.52709999633953
+        },
+        {
+          "name": "penn-FudanPed00065",
+          "source": "penn-fudan",
+          "tp": 4,
+          "fp": 1,
+          "fn": 1,
+          "latency_ms": 196.422100008931
+        },
+        {
+          "name": "penn-FudanPed00066",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 171.6955000301823
+        },
+        {
+          "name": "penn-FudanPed00067",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 85.09879995835945
+        },
+        {
+          "name": "penn-FudanPed00068",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 96.71149996574968
+        },
+        {
+          "name": "penn-FudanPed00069",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 94.86850001849234
+        },
+        {
+          "name": "penn-FudanPed00070",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 92.14680001605302
+        },
+        {
+          "name": "penn-FudanPed00071",
+          "source": "penn-fudan",
+          "tp": 3,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 180.85589999100193
+        },
+        {
+          "name": "penn-FudanPed00072",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 93.30559999216348
+        },
+        {
+          "name": "penn-FudanPed00073",
+          "source": "penn-fudan",
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 132.3108000215143
+        },
+        {
+          "name": "penn-FudanPed00074",
+          "source": "penn-fudan",
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 85.47089999774471
+        },
+        {
+          "name": "penn-PennPed00082",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 194.89280000561848
+        },
+        {
+          "name": "penn-PennPed00083",
+          "source": "penn-fudan",
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 98.76640001311898
+        },
+        {
+          "name": "penn-PennPed00084",
+          "source": "penn-fudan",
+          "tp": 3,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 93.24369998648763
+        },
+        {
+          "name": "penn-PennPed00085",
+          "source": "penn-fudan",
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 98.35800004657358
+        },
+        {
+          "name": "penn-PennPed00086",
+          "source": "penn-fudan",
+          "tp": 5,
+          "fp": 1,
+          "fn": 0,
+          "latency_ms": 91.30940004251897
+        },
+        {
+          "name": "penn-PennPed00087",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 87.20279997214675
+        },
+        {
+          "name": "penn-PennPed00088",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 104.8624999821186
+        },
+        {
+          "name": "penn-PennPed00089",
+          "source": "penn-fudan",
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 78.0061999685131
+        },
+        {
+          "name": "penn-PennPed00090",
+          "source": "penn-fudan",
+          "tp": 2,
+          "fp": 0,
+          "fn": 1,
+          "latency_ms": 78.85579997673631
+        },
+        {
+          "name": "penn-PennPed00091",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 108.28580002998933
+        },
+        {
+          "name": "penn-PennPed00092",
+          "source": "penn-fudan",
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 74.58610000321642
+        },
+        {
+          "name": "penn-PennPed00093",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 98.3093999675475
+        },
+        {
+          "name": "penn-PennPed00094",
+          "source": "penn-fudan",
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 93.6887999996543
+        },
+        {
+          "name": "penn-PennPed00095",
+          "source": "penn-fudan",
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 83.88579997699708
+        },
+        {
+          "name": "penn-PennPed00096",
+          "source": "penn-fudan",
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "latency_ms": 152.06839999882504
+        },
+        {
+          "name": "shanghai-08_001-48",
+          "source": "shanghaitech",
+          "tp": 7,
+          "fp": 1,
+          "fn": 2,
+          "latency_ms": 63.90760000795126
+        },
+        {
+          "name": "shanghai-09_001-48",
+          "source": "shanghaitech",
+          "tp": 4,
+          "fp": 0,
+          "fn": 1,
+          "latency_ms": 66.8504000059329
+        },
+        {
+          "name": "shanghai-12_001-50",
+          "source": "shanghaitech",
+          "tp": 1,
+          "fp": 2,
+          "fn": 2,
+          "latency_ms": 81.47480001207441
+        }
+      ]
+    }
+  ],
+  "checkpoint_sha256": "c79abbe0dbb5d2ff8c79525fba66eee42e400505a95240003e2f1c834348b8df",
+  "dataset_manifest_sha256": "aedc4dea5d16f739bb15f5e1f9c81d64cbfa8574aca75d46de167f5be41985e2",
+  "limitations": [
+    "COCO128 already in pretrained COCO training set.",
+    "Only three held-out ShanghaiTech frames; subjective labels, not a final benchmark.",
+    "Some Penn-Fudan background people may be unannotated.",
+    "ShanghaiTech training uses noisy teacher pseudo labels."
+  ]
+}
