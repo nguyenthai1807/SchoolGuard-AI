@@ -26,7 +26,9 @@ def app(tmp_path, monkeypatch):
         cv2.imwrite(str(frames / f"{n:04}.jpg"), np.zeros((120, 160, 3), dtype=np.uint8))
     models = tmp_path / "models"
     models.mkdir()
-    (models / "yolo11s.pt").write_bytes(b"test stub; injected detector only")
+    for name in ("yolov8n", "yolov8n-pose", "yolov9t", "yolov10n", "yolo11s",
+                 "yolo12n"):
+        (models / f"{name}.pt").write_bytes(b"test stub; injected detector only")
     return create_app(
         Settings(data_root=root, runtime=tmp_path / "runtime", models=models, start_worker=False)
     )

@@ -9,6 +9,7 @@ import pytest
 
 from schoolguard.network_camera import NetworkCamera, validate_camera_url
 from schoolguard.schemas import JobRequest
+from schoolguard.db import now
 
 
 @pytest.mark.parametrize("url", ["http://192.168.1.20:8080/video", "rtsp://user:pass@10.0.0.8:554/stream1", "http://172.16.1.2/feed"])
@@ -65,10 +66,10 @@ def test_remote_start_analyze_preview_and_stop(tmp_path, monkeypatch):
     monkeypatch.setattr(module, 'NetworkCamera', Source)
     app = create_app(Settings(runtime=tmp_path/'runtime', models=tmp_path/'models',
                               data_root=tmp_path/'data', start_worker=False), detector_factory=Detector)
-    app.state.db.execute("INSERT INTO users(id,username,password,role) VALUES(1,'test','x','admin')")
+    app.state.db.execute("INSERT INTO users(id,username,password,role) VALUES(1,'admin','x','admin')")
     def endpoint(path):
         return next(r.endpoint for r in app.routes if r.path == path)
-    current = {'id': 1, 'role': 'admin'}
+    current = {'id': 1, 'username': 'admin', 'role': 'admin'}
     created = endpoint('/api/live/start')(JobRequest(source_id='live', camera_url='http://192.168.1.2/video'), current)
     ident = created['id']
     source = app.state.live_sessions[ident]['source']
@@ -216,9 +217,9 @@ def test_portrait_phone_saves_two_faces_in_same_gallery(tmp_path, monkeypatch):
     monkeypatch.setattr(module, 'NetworkCamera', Source)
     app = create_app(Settings(runtime=tmp_path/'runtime', models=tmp_path/'models',
                              data_root=tmp_path/'data', start_worker=False), detector_factory=Detector, face_factory=Faces)
-    app.state.db.execute("INSERT INTO users(id,username,password,role) VALUES(1,'test','x','admin')")
+    app.state.db.execute("INSERT INTO users(id,username,password,role) VALUES(1,'admin','x','admin')")
     def endpoint(path): return next(r.endpoint for r in app.routes if r.path == path)
-    current = {'id': 1, 'role': 'admin'}
+    current = {'id': 1, 'username': 'admin', 'role': 'admin'}
     ident = endpoint('/api/live/start')(JobRequest(source_id='live', camera_url='http://192.168.1.2/live.flv', recognize_faces=True), current)['id']
     for _ in range(2):
         app.state.live_sessions[ident]['analyzer'].last_face = -10
@@ -264,8 +265,21 @@ def test_preview_continues_during_inference_and_rotation_is_serialized(tmp_path,
     app = create_app(Settings(runtime=tmp_path/'runtime', models=tmp_path/'models',
                              data_root=tmp_path/'data', start_worker=False), detector_factory=Detector)
     app.state.db.execute("INSERT INTO users(id,username,password,role) VALUES(1,'test','x','operator')")
+    app.state.db.execute(
+        "INSERT INTO customer_profiles(user_id,display_name,email,phone,updated_at) VALUES(1,'Test','test@example.test','',?)",
+        (now(),),
+    )
+    app.state.db.execute(
+        "INSERT INTO telegram_accounts(user_id,chat_id,verified_at) VALUES(1,'123456789',?)",
+        (now(),),
+    )
+    app.state.db.execute(
+        "INSERT INTO subscriptions(user_id,plan,expires_at,source,updated_at) VALUES(1,'pro_local',NULL,'test',?)",
+        (now(),),
+    )
+    app.state.telegram_linker.token = 'test-token'
     def endpoint(path): return next(r.endpoint for r in app.routes if r.path == path)
-    current = {'id': 1, 'role': 'operator'}
+    current = {'id': 1, 'username': 'test', 'role': 'operator'}
     ident = endpoint('/api/live/start')(JobRequest(source_id='live', camera_url='http://192.168.1.2/live.flv'), current)['id']
     with ThreadPoolExecutor(max_workers=3) as pool:
         inference = pool.submit(endpoint('/api/live/{ident}/remote-frame'), ident, current)
@@ -287,6 +301,10 @@ def test_preview_continues_during_inference_and_rotation_is_serialized(tmp_path,
         with pytest.raises(HTTPException) as exc:
             endpoint(path)(ident, *args, {'id': 2, 'role': 'operator'})
         assert exc.value.status_code == 403
+    app.state.db.execute("UPDATE subscriptions SET plan='free' WHERE user_id=1")
+    with pytest.raises(HTTPException) as exc:
+        endpoint('/api/live/{ident}/preview')(ident, current)
+    assert exc.value.status_code == 403
     endpoint('/api/live/{ident}/stop')(ident, current)
     with pytest.raises(HTTPException) as exc:
         endpoint('/api/live/{ident}/preview')(ident, current)
@@ -311,9 +329,9 @@ def test_standard_model_counts_people_and_objects_in_one_pass(tmp_path, monkeypa
     settings.models.mkdir(parents=True)
     (settings.models/'yolo11s.pt').touch()
     app = create_app(settings)
-    app.state.db.execute("INSERT INTO users(id,username,password,role) VALUES(1,'test','x','admin')")
+    app.state.db.execute("INSERT INTO users(id,username,password,role) VALUES(1,'admin','x','admin')")
     start = next(r.endpoint for r in app.routes if r.path == '/api/live/start')
-    ident = start(JobRequest(source_id='live', model='yolo11s', detect_objects=True), {'id': 1, 'role': 'admin'})['id']
+    ident = start(JobRequest(source_id='live', model='yolo11s', detect_objects=True), {'id': 1, 'username': 'admin', 'role': 'admin'})['id']
     analyzer = app.state.live_sessions[ident]['analyzer']
     assert len(created) == 1
     assert analyzer.object_detector is None

@@ -4,7 +4,9 @@ from fastapi.testclient import TestClient
 def test_login_required_and_logout(client):
     assert client.get("/api/me").json()["role"] == "admin"
     assert client.post("/api/logout").status_code == 200
-    for path in ["/api/jobs", "/api/alerts", "/api/sources", "/api/export/alerts.csv"]:
+    for path in ["/api/jobs", "/api/jobs/missing/people",
+                 "/api/jobs/missing/people/1/image", "/api/alerts", "/api/sources",
+                 "/api/export/alerts.csv", "/api/profile", "/api/telegram/status"]:
         assert client.get(path).status_code == 401
 
 
@@ -41,6 +43,9 @@ def test_csrf_and_host(client, request_data):
         == 403
     )
     assert client.get("/api/health", headers={"Host": "evil.test"}).status_code == 400
+    assert client.get(
+        "/api/health", headers={"Host": "lh25-test.trycloudflare.com"}
+    ).status_code == 200
 
 
 def test_sources_pagination_and_no_path_disclosure(client):

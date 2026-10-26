@@ -6,7 +6,7 @@ from schoolguard.behavior import BehaviorEngine
 from schoolguard.config import Settings
 from schoolguard.db import Database
 from schoolguard.media import Reader
-from schoolguard.schemas import JobRequest
+from schoolguard.schemas import POSE_MODELS, JobRequest
 
 
 def main():
@@ -17,7 +17,7 @@ def main():
         "SELECT j.*,s.name,s.path,s.kind FROM jobs j JOIN sources s ON s.id=j.source_id WHERE j.status='completed' ORDER BY j.created_at"
     ):
         config = JobRequest.model_validate_json(job["config"])
-        if config.model != "yolo11n-pose":
+        if config.model not in POSE_MODELS:
             continue
         with Reader(job["path"], job["kind"]) as reader:
             engine = BehaviorEngine(

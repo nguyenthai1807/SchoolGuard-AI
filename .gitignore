@@ -15,14 +15,24 @@ data/videos/
 uploads/
 *.pt
 .env
+.env-*.tmp
 *.db
 *.egg-info/
 .test-output/
 .tmp/
+tools/cloudflared.exe
 pytest-cache-files-*/
+/.pytest-*/
+/.qa-*/
+/.demo-temp-*/
 
 # Local camera captures, logs and machine-specific UI checks
 /local/*.png
 /local/*.jpg
 /local/logs/
 /local/smoke-phone-ui.cjs
+
+# Local browser inference tooling and generated model exports
+/tools/browser-runtime/node_modules/
+/models/*.onnx
+/models/*.onnx.data

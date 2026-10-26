@@ -161,3 +161,25 @@ def test_live_objects_do_not_inflate_people_or_occupancy():
     assert result["objects"] == 1
     assert len({d["track_id"] for d in result["detections"]}) == 3
     assert result["alerts"] == []
+
+
+def test_live_pose_uses_body_detector_for_people_recall_and_keeps_keypoints():
+    keypoints = [[.2, .2, .9]] * 17
+    def pose(_image):
+        return [{"track_id": 90, "class_id": 0, "confidence": .7,
+                 "bbox": [.1, .1, .3, .9], "keypoints": keypoints}]
+    def bodies(_image):
+        return [
+            {"track_id": 10, "class_id": 0, "confidence": .9,
+             "bbox": [.1, .1, .3, .9]},
+            {"track_id": 11, "class_id": 0, "confidence": .8,
+             "bbox": [.6, .1, .8, .9]},
+        ]
+    config = JobRequest(source_id="live", model="yolo11n-pose")
+    moments = iter([0, 0])
+    analyzer = LiveAnalyzer(config, pose, body_detector=bodies,
+                            clock=lambda: next(moments))
+    result = analyzer.update(frame())
+    assert result["people"] == 2
+    assert result["objects"] == 0
+    assert sum("keypoints" in item for item in result["detections"]) == 1

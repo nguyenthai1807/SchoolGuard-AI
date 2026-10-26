@@ -1,0 +1,20 @@
+#orders td:last-child{min-width:240px}
+#orders form{display:grid;gap:8px}
+#orders form label{display:grid;gap:5px;color:#b7ccd0;font-size:12px}
+#orders form input{min-width:0;width:100%;padding:10px 12px;border:1px solid #52727b;border-radius:8px;background:#102530;color:#effaf5;font:inherit}
+#orders form input:focus-visible{outline:3px solid #91e5d3;outline-offset:2px}
+#orders form button,#orders [data-resend]{font-size:12px;padding:9px 11px}
+#orders [data-reject]{background:transparent;color:#f1c6b8;border:1px solid #986d63}
+.ops-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
+.ops-columns h3{font-size:16px;margin:6px 0 12px;color:#dcece8}
+.ops-checks{display:grid;gap:0;border-top:1px solid #3f5862}
+.ops-check{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #3f5862}
+.ops-check strong,.ops-check small{display:block}
+.ops-check strong{font-size:13px;line-height:1.35}
+.ops-check small{font-size:11px;line-height:1.5;color:#a6c1c4;margin-top:4px}
+.ops-state{flex:none;font-size:11px;font-weight:700;border-radius:99px;padding:4px 8px;white-space:nowrap}
+.ops-state.ready{color:#b0ead3;background:#225047}
+.ops-state.missing{color:#f6d19b;background:#493b29}
+.ops-state.unknown{color:#cbd4dc;background:#394957}
+@media(max-width:900px){.ops-columns{grid-template-columns:1fr}}
+@media(max-width:430px){.ops-check{flex-direction:column}.ops-state{align-self:flex-start}}

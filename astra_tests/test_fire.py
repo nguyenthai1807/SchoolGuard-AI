@@ -45,6 +45,52 @@ def test_fire_short_dropout_does_not_duplicate_notifications():
     assert second == []
 
 
+def test_fire_episode_confirmed_during_cooldown_can_alert_after_it_expires():
+    engine = FireEngine(dwell=0.5, cooldown=2)
+    first = [a for t in (0, 0.25, 0.5) for a in engine.update([hazard()], t)]
+    assert len(first) == 1
+    assert first[0]["track_id"] == -100
+    engine.update([], 0.75)
+    for t in (1, 1.25, 1.5, 2):
+        assert not engine.update([hazard()], t)
+    assert len(engine.confirmed) == 1
+    alert, = engine.update([hazard()], 2.5)
+    assert alert["track_id"] == -101
+    assert alert["details"]["onset_timestamp"] == 1
+    # Confirmation time is when evidence first qualified, even if notification waited.
+    assert alert["details"]["confirmed_timestamp"] == 1.5
+    assert not engine.update([hazard()], 3)
+
+
+@pytest.mark.parametrize("kind", ["fire", "smoke"])
+def test_fire_gap_restarts_onset_and_requires_fresh_confirmation(kind):
+    engine = FireEngine(dwell=1, max_gap=0.5)
+    assert not engine.update([hazard(kind=kind)], 0)
+    assert not engine.update([hazard(kind=kind)], 0.5)
+    for t in (1.1, 1.6):
+        assert not engine.update([hazard(kind=kind)], t)
+        assert engine.confirmed == []
+    alert, = engine.update([hazard(kind=kind)], 2.1)
+    assert alert["details"]["onset_timestamp"] == 1.1
+    assert alert["details"]["confirmed_timestamp"] == 2.1
+
+
+def test_fire_gap_boundary_tolerates_floating_point_roundoff():
+    engine = FireEngine(dwell=0.2, max_gap=0.1)
+    assert not engine.update([hazard()], 0.7)
+    assert not engine.update([hazard()], 0.8)
+    assert len(engine.update([hazard()], 0.9)) == 1
+
+
+def test_fire_spike_or_duplicate_boxes_in_one_frame_cannot_confirm():
+    engine = FireEngine(dwell=0)
+    assert not engine.update([hazard()] * 4, 0)
+    assert engine.confirmed == []
+    assert not engine.update([], 0.5)
+    assert not engine.update([hazard()], 1)
+    assert engine.confirmed == []
+
+
 def test_decode_letterbox_class_nms():
     output = np.zeros((1, 6, 2100), dtype=np.float32)
     output[0, :, 0] = [160, 160, 160, 80, 0.9, 0.1]

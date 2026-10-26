@@ -65,7 +65,7 @@ def test_video_gallery_and_webcam_daily_dedup(tmp_path, monkeypatch):
         assert client.post("/api/login", json={"username": "admin", "password": password}).status_code == 200
 
         source = client.get("/api/sources?split=training").json()["items"][0]
-        created = client.post("/api/jobs", json={"source_id": source["id"],
+        created = client.post("/api/jobs", json={"source_id": source["id"], "model": "yolo11s",
                                                  "recognize_faces": True, "max_seconds": 0})
         assert created.status_code == 202
         ident = created.json()["id"]
@@ -215,8 +215,10 @@ def test_delete_face_routes_remove_only_selected_live_data(tmp_path):
     app = create_app(settings, detector_factory=NoPeople)
     db = app.state.db
     db.execute("INSERT INTO users(id,username,password,role) VALUES(1,'tester','unused','admin')")
+    db.execute("INSERT INTO users(id,username,password,role) VALUES(2,'other','unused','operator')")
     db.execute("INSERT INTO sources VALUES('s','test','x','live','live')")
     db.execute("INSERT INTO jobs(id,source_id,status,created_at,config,user_id) VALUES('j','s','running','now','{}',1)")
+    db.execute("INSERT INTO jobs(id,source_id,status,created_at,config,user_id) VALUES('j2','s','running','now','{}',2)")
     folder = settings.runtime / 'faces'
     folder.mkdir()
     for ident, kind in [('a', 'live'), ('b', 'live'), ('c', 'video')]:
@@ -224,6 +226,10 @@ def test_delete_face_routes_remove_only_selected_live_data(tmp_path):
                    (ident, 'live:2026-10-22', kind, 'j', '2026-10-22', 1,
                     'now', 'now', 0, 1, .9, b'feature', ident+'.jpg'))
         (folder / (ident+'.jpg')).write_bytes(b'jpeg')
+    db.execute("INSERT INTO faces VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+               ('d', 'live:2026-10-22', 'live', 'j2', '2026-10-22', 1,
+                'now', 'now', 0, 1, .9, b'feature', 'd.jpg'))
+    (folder / 'd.jpg').write_bytes(b'other customer')
     single = next(r.endpoint for r in app.routes if r.path == '/api/faces/{ident}' and 'DELETE' in r.methods)
     daily = next(r.endpoint for r in app.routes if r.path == '/api/faces' and 'DELETE' in r.methods)
     assert single('a', current={'id': 1}) == {'deleted': 1}
@@ -233,11 +239,43 @@ def test_delete_face_routes_remove_only_selected_live_data(tmp_path):
         single('c', current={'id': 1})
     assert exc.value.status_code == 404
     with pytest.raises(HTTPException) as exc:
+        single('d', current={'id': 1})
+    assert exc.value.status_code == 404
+    with pytest.raises(HTTPException) as exc:
         daily('../invalid', current={'id': 1})
     assert exc.value.status_code == 422
     assert daily('2026-10-22', current={'id': 1}) == {'deleted': 1}
     assert (folder / 'c.jpg').exists()
+    assert (folder / 'd.jpg').exists()
+    assert db.one("SELECT id FROM faces WHERE id='d'") is not None
     assert daily('2026-10-22', current={'id': 1}) == {'deleted': 0}
+
+
+def test_webcam_face_scope_is_account_specific_and_legacy_rows_migrate(tmp_path):
+    from schoolguard.db import Database
+    from schoolguard.faces import FaceLedger
+    database_path = tmp_path / 'faces.sqlite3'
+    db = Database(database_path)
+    db.execute("INSERT INTO users(id,username,password,role) VALUES(1,'one','x','operator')")
+    db.execute("INSERT INTO users(id,username,password,role) VALUES(2,'two','x','operator')")
+    db.execute("INSERT INTO sources VALUES('s','test','x','live','live')")
+    for user_id in (1, 2):
+        db.execute("INSERT INTO jobs(id,source_id,status,created_at,config,user_id) VALUES(?,?,?,?,?,?)",
+                   (f'job{user_id}', 's', 'completed', 'now', '{}', user_id))
+        db.execute("INSERT INTO faces VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                   (f'face{user_id}', 'live:2026-10-22', 'live', f'job{user_id}',
+                    '2026-10-22', 1, 'now', 'now', 0, 1, .9,
+                    np.array([float(user_id), 0], dtype=np.float32).tobytes(),
+                    f'face{user_id}.jpg'))
+    db = Database(database_path)
+    assert db.one("SELECT scope FROM faces WHERE id='face1'")["scope"] == 'live:1:2026-10-22'
+    assert db.one("SELECT scope FROM faces WHERE id='face2'")["scope"] == 'live:2:2026-10-22'
+    first = FaceLedger(db, tmp_path, 'live', 'job1', lambda _frame: [],
+                       day_provider=lambda: '2026-10-22', user_id=1)
+    second = FaceLedger(db, tmp_path, 'live', 'job2', lambda _frame: [],
+                        day_provider=lambda: '2026-10-22', user_id=2)
+    assert set(first.records) == {'face1'}
+    assert set(second.records) == {'face2'}
 
 
 def test_closeup_face_saves_without_body_and_survives_slow_frames(tmp_path):
@@ -313,3 +351,246 @@ def test_face_retry_targets_missing_person_and_maps_coordinates():
     assert calls[1] == ((440, 300, 3), 640)
     assert len(faces) == 2
     assert faces[1]['bbox'] == pytest.approx([.66, .144, .84, .276])
+
+
+@pytest.fixture
+def face_ledger_factory(tmp_path):
+    from schoolguard.faces import FaceLedger
+
+    class MemoryDB:
+        def all(self, *_args):
+            return []
+
+        def execute(self, *_args):
+            pass
+
+    def create(kind, samples):
+        return FaceLedger(MemoryDB(), tmp_path, kind, 'test', lambda _frame: samples,
+                          day_provider=lambda: '2026-10-23')
+
+    return create
+
+
+def face_sample(box=(.2, .1, .4, .3), vector=(1., 0.), confidence=.95):
+    feature = np.array(vector, dtype=np.float32)
+    feature /= np.linalg.norm(feature)
+    return {'bbox': list(box), 'embedding': feature, 'confidence': confidence,
+            'image': b'jpeg'}
+
+
+@pytest.mark.parametrize('kind', ['video', 'live'])
+@pytest.mark.parametrize('people', [None, []])
+def test_same_frame_duplicate_faces_count_as_one_sample(face_ledger_factory, kind, people):
+    samples = [face_sample(confidence=.9),
+               face_sample((.202, .102, .402, .302), confidence=.98)]
+    ledger = face_ledger_factory(kind, samples)
+    first = ledger.update(None, 0, people=people)
+    assert len(first['visible']) == 1
+    assert first['visible'][0]['confidence'] == .98
+    if people is not None:
+        assert first['total'] == 0
+        assert [p['count'] for p in ledger.pending_faces.values()] == [1]
+    result = ledger.update(None, 1, people=people)
+    assert result['total'] == 1
+    assert len(result['visible']) == 1
+    assert not ledger.pending_faces
+
+
+@pytest.mark.parametrize('kind', ['video', 'live'])
+def test_pending_face_follows_actual_body_during_motion_and_turn(face_ledger_factory, kind):
+    samples = [face_sample()]
+    ledger = face_ledger_factory(kind, samples)
+    people = [{'track_id': 7, 'bbox': [.1, 0., .5, 1.]}]
+    ledger.observe_people(people, 0)
+    assert ledger.update(None, 0, people=people)['total'] == 0
+    samples[:] = [face_sample((.65, .1, .85, .3), (0., 1.))]
+    people[0]['bbox'] = [.6, 0., .95, 1.]
+    ledger.observe_people(people, 1)
+    result = ledger.update(None, 1, people=people)
+    assert result['total'] == 1
+    assert not ledger.pending_faces
+    ident = result['visible'][0]['id']
+    assert ledger.body_faces[7]['id'] == ident
+    # Body observations between face samples must keep the binding alive.
+    for stamp in range(2, 8):
+        ledger.observe_people(people, stamp)
+    samples[0]['embedding'] = np.array([1., 0.], dtype=np.float32)
+    result = ledger.update(None, 7, people=people)
+    assert result['total'] == 1
+    assert result['visible'][0]['id'] == ident
+    np.testing.assert_array_equal(ledger.records[ident]['embedding'], [0., 1.])
+
+
+@pytest.mark.parametrize('kind', ['video', 'live'])
+@pytest.mark.parametrize('newcomer_first', [False, True])
+def test_active_body_face_cannot_be_stolen_by_new_person(face_ledger_factory, kind, newcomer_first):
+    samples = [face_sample()]
+    ledger = face_ledger_factory(kind, samples)
+    people = [{'track_id': 1, 'bbox': [.1, 0., .5, 1.]}]
+    for stamp in (0, 1):
+        ledger.observe_people(people, stamp)
+        result = ledger.update(None, stamp, people=people)
+    first_id = result['visible'][0]['id']
+    people.append({'track_id': 2, 'bbox': [.55, 0., 1., 1.]})
+    turned = face_sample(vector=(0., 1.))
+    newcomer = face_sample((.65, .1, .85, .3))
+    samples[:] = [newcomer, turned] if newcomer_first else [turned, newcomer]
+    for stamp in (2, 3):
+        ledger.observe_people(people, stamp)
+        result = ledger.update(None, stamp, people=people)
+        old_face = next(f for f in result['visible'] if f['bbox'] == turned['bbox'])
+        assert old_face['id'] == first_id
+    assert result['total'] == 2
+    assert ledger.body_faces[2]['id'] != first_id
+    np.testing.assert_array_equal(ledger.records[first_id]['embedding'], [1., 0.])
+
+
+def test_pending_confirmation_cannot_transfer_between_body_tracks(face_ledger_factory):
+    samples = [face_sample()]
+    ledger = face_ledger_factory('live', samples)
+    people = [{'track_id': 1, 'bbox': [.1, 0., .5, 1.]}]
+    ledger.observe_people(people, 0)
+    assert ledger.update(None, 0, people=people)['total'] == 0
+    people[0]['track_id'] = 2
+    ledger.observe_people(people, 1)
+    assert ledger.update(None, 1, people=people)['total'] == 0
+    ledger.observe_people(people, 2)
+    assert ledger.update(None, 2, people=people)['total'] == 1
+
+
+def test_pending_confirmation_requires_distinct_frame_times(face_ledger_factory):
+    ledger = face_ledger_factory('live', [face_sample()])
+    for _ in range(3):
+        assert ledger.update(None, 0, people=[])['total'] == 0
+    assert len(ledger.pending_faces) == 1
+    assert ledger.update(None, 1, people=[])['total'] == 1
+
+
+def test_pending_track_expires_after_observed_absence(face_ledger_factory):
+    ledger = face_ledger_factory('live', [face_sample()])
+    people = [{'track_id': 1, 'bbox': [.1, 0., .5, 1.]}]
+    ledger.observe_people(people, 0)
+    assert ledger.update(None, 0, people=people)['total'] == 0
+    ledger.observe_people([], 3)
+    assert not ledger.pending_faces
+    ledger.observe_people(people, 4)
+    assert ledger.update(None, 4, people=people)['total'] == 0
+
+
+@pytest.mark.parametrize('same_embedding', [False, True])
+def test_overlapping_faces_on_different_bodies_stay_separate(face_ledger_factory, same_embedding):
+    samples = [face_sample((.195, .1, .395, .3)),
+               face_sample((.205, .1, .405, .3), (1., 0.) if same_embedding else (0., 1.))]
+    people = [{'track_id': 1, 'bbox': [.1, 0., .3, 1.]},
+              {'track_id': 2, 'bbox': [.3, 0., .6, 1.]}]
+    ledger = face_ledger_factory('live', samples)
+    for stamp in (0, 1, 2):
+        ledger.observe_people(people, stamp)
+        result = ledger.update(None, stamp, people=people)
+        assert len(result['visible']) == 2
+    assert result['total'] == 2
+    assert ledger.body_faces[1]['id'] != ledger.body_faces[2]['id']
+
+
+def test_ambiguous_overlapping_bodies_do_not_create_arbitrary_bindings(face_ledger_factory):
+    samples = [face_sample(), face_sample((.21, .1, .41, .3), (0., 1.))]
+    people = [{'track_id': track, 'bbox': [.1, 0., .6, 1.]} for track in (1, 2)]
+    ledger = face_ledger_factory('live', samples)
+    for stamp in (0, 1, 2):
+        ledger.observe_people(people, stamp)
+        result = ledger.update(None, stamp, people=people)
+    assert result['total'] == 2
+    assert len(result['visible']) == 2
+    assert ledger.body_faces == {}
+
+
+def test_face_retry_preserves_distinct_overlapping_face():
+    from schoolguard.faces import FaceRecognizer
+
+    recognizer = object.__new__(FaceRecognizer)
+    first = face_sample((.1, .1, .4, .3))
+    calls = []
+
+    def detect(frame, max_side=1280):
+        calls.append(frame.shape)
+        if len(calls) == 1:
+            return [first]
+        height, width = frame.shape[:2]
+        return [face_sample((0, 50 / height, 240 / width, 250 / height), (0., 1.))]
+
+    recognizer._detect = detect
+    result = recognizer(np.zeros((1000, 1000, 3), dtype=np.uint8),
+                        people=[{'track_id': 2, 'bbox': [.26, .05, .7, .95]}])
+    assert len(calls) == 2
+    assert len(result) == 2
+    assert result[1]['bbox'] == pytest.approx([.26, .1, .5, .3])
+
+
+def test_ambiguous_face_cannot_take_identity_reserved_for_clear_body(face_ledger_factory):
+    samples = [face_sample()]
+    ledger = face_ledger_factory('live', samples)
+    people = [{'track_id': 1, 'bbox': [.1, 0., .6, 1.]}]
+    for stamp in (0, 1):
+        ledger.observe_people(people, stamp)
+        result = ledger.update(None, stamp, people=people)
+    ident = result['visible'][0]['id']
+    people.append({'track_id': 2, 'bbox': [.4, 0., .9, 1.]})
+    samples[:] = [face_sample((.4, .1, .6, .3), confidence=.99),
+                  face_sample(vector=(0., 1.))]
+    ledger.observe_people(people, 2)
+    result = ledger.update(None, 2, people=people)
+    assert next(f for f in result['visible'] if f['bbox'] == [.2, .1, .4, .3])['id'] == ident
+
+
+def test_ambiguous_face_cannot_take_pending_confirmation_for_clear_body(face_ledger_factory):
+    samples = [face_sample()]
+    ledger = face_ledger_factory('live', samples)
+    people = [{'track_id': 1, 'bbox': [.1, 0., .6, 1.]}]
+    ledger.observe_people(people, 0)
+    assert ledger.update(None, 0, people=people)['total'] == 0
+    people.append({'track_id': 2, 'bbox': [.3, 0., .9, 1.]})
+    # The original face center is outside body 2, but the new face is ambiguous.
+    samples[:] = [face_sample((.28, .1, .48, .3), confidence=.99),
+                  face_sample((.18, .1, .38, .3), vector=(0., 1.))]
+    ledger.observe_people(people, 1)
+    result = ledger.update(None, 1, people=people)
+    clear_face = next(f for f in result['visible'] if f['bbox'] == [.18, .1, .38, .3])
+    assert clear_face['id'] is not None
+    assert ledger.body_faces[1]['id'] == clear_face['id']
+
+
+def test_pending_is_removed_when_sample_recovers_existing_identity(face_ledger_factory):
+    samples = [face_sample()]
+    ledger = face_ledger_factory('live', samples)
+    first = ledger.update(None, 0)
+    ident = first['visible'][0]['id']
+    # Too weak to match the saved identity, but subsequent evidence recovers it.
+    samples[:] = [face_sample(vector=(.2, .98))]
+    assert ledger.update(None, 1, people=[])['total'] == 1
+    assert len(ledger.pending_faces) == 1
+    samples[:] = [face_sample(vector=(.6, .8))]
+    result = ledger.update(None, 2, people=[])
+    assert result['total'] == 1
+    assert result['visible'][0]['id'] == ident
+    assert not ledger.pending_faces
+
+
+def test_non_person_track_does_not_hold_face_binding(face_ledger_factory):
+    samples = [face_sample()]
+    ledger = face_ledger_factory('live', samples)
+    people = [{'track_id': 1, 'class_id': 67, 'bbox': [.1, 0., .5, 1.]}]
+    for stamp in (0, 1):
+        ledger.observe_people(people, stamp)
+        result = ledger.update(None, stamp, people=people)
+    assert result['total'] == 1
+    assert ledger.body_faces == {}
+
+
+def test_pending_face_overlay_does_not_display_none(monkeypatch):
+    from schoolguard.faces import draw_faces
+
+    labels = []
+    monkeypatch.setattr(cv2, 'putText', lambda _image, label, *_args: labels.append(label))
+    draw_faces(np.zeros((100, 100, 3), dtype=np.uint8),
+               [{'bbox': [.1, .1, .4, .4], 'id': None, 'number': None, 'pending': True}])
+    assert labels and all('None' not in label for label in labels)

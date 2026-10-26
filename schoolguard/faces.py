@@ -22,6 +22,35 @@ def local_day():
     return datetime.now().astimezone().date().isoformat()
 
 
+def _face_bodies(box, people):
+    """Return actual person tracks containing the face center in their head area."""
+    cx, cy = (box[0] + box[2]) / 2, (box[1] + box[3]) / 2
+    return {p['track_id'] for p in (people or [])
+            if p.get('class_id', 0) == 0 and p.get('track_id') is not None
+            and p['bbox'][0] <= cx <= p['bbox'][2]
+            and p['bbox'][1] <= cy <= p['bbox'][1] + .45 * (p['bbox'][3] - p['bbox'][1])}
+
+
+def _unique_faces(observations, people):
+    """Suppress near-identical proposals only with supporting appearance evidence."""
+    unique = []
+    for item in sorted(observations, key=lambda face: face['confidence'], reverse=True):
+        bodies = _face_bodies(item['bbox'], people)
+        duplicate = False
+        for previous, prior_bodies in unique:
+            # Distinct body assignments outweigh similar-looking face proposals.
+            if bodies and prior_bodies and bodies.isdisjoint(prior_bodies):
+                continue
+            if (overlap(item['bbox'], previous['bbox']) >= .85
+                    and item['embedding'].shape == previous['embedding'].shape
+                    and float(np.dot(item['embedding'], previous['embedding'])) >= MATCH_THRESHOLD):
+                duplicate = True
+                break
+        if not duplicate:
+            unique.append((item, bodies))
+    return [item for item, _bodies in unique]
+
+
 class FaceRecognizer:
     """YuNet landmarks + SFace embedding; model files never leave this computer."""
 
@@ -106,17 +135,18 @@ class FaceRecognizer:
                 x, y, r, t = face['bbox']
                 box = [(x1+x*(x2-x1))/width, (y1+y*(y2-y1))/height,
                        (x1+r*(x2-x1))/width, (y1+t*(y2-y1))/height]
-                if not any(overlap(box, f['bbox']) > .3 for f in observations):
-                    observations.append({**face, 'bbox': box})
-        return observations
+                observations.append({**face, 'bbox': box})
+        return _unique_faces(observations, people)
 
 
 class FaceLedger:
     """Deduplicate faces per video, or across webcam sessions on the same local day."""
 
-    def __init__(self, db, runtime, kind, job_id, recognizer, day_provider=local_day):
+    def __init__(self, db, runtime, kind, job_id, recognizer, day_provider=local_day,
+                 user_id=None):
         self.db, self.runtime = db, runtime
         self.kind, self.job_id = kind, job_id
+        self.user_id = user_id
         self.recognizer, self.day_provider = recognizer, day_provider
         self.scope = None
         self.records = {}
@@ -126,7 +156,8 @@ class FaceLedger:
 
     def refresh_scope(self):
         day = self.day_provider()
-        scope = f"live:{day}" if self.kind == "live" else f"video:{self.job_id}"
+        scope = (f"live:{self.user_id}:{day}" if self.user_id is not None
+                 else f"live:{day}") if self.kind == "live" else f"video:{self.job_id}"
         if scope == self.scope:
             return
         self.scope, self.day = scope, day
@@ -145,31 +176,62 @@ class FaceLedger:
 
     def observe_people(self, people, video_time):
         """Expire bindings when a body actually disappears, not when its face turns."""
-        visible = {p['track_id'] for p in people if p.get('track_id') is not None}
+        self.refresh_scope()
+        visible = {p['track_id'] for p in people
+                   if p.get('class_id', 0) == 0 and p.get('track_id') is not None}
         for track, state in list(self.body_faces.items()):
             if track in visible:
                 state['last'] = video_time
             elif video_time - state['last'] > 2.5:
                 del self.body_faces[track]
+        for key, pending in list(self.pending_faces.items()):
+            if pending['body'] is not None:
+                if pending['body'] in visible:
+                    pending['body_last'] = video_time
+                elif video_time - pending['body_last'] > 2.5:
+                    del self.pending_faces[key]
         self.pending_faces = {k: v for k, v in self.pending_faces.items()
-                              if video_time - v['last'] <= 10.0}
+                              if 0 <= video_time - v['last'] <= 10.0}
 
     def update(self, frame, video_time, people=None):
         self.refresh_scope()
         observations = (self.recognizer(frame, people=people)
                         if isinstance(self.recognizer, FaceRecognizer) else self.recognizer(frame))
+        observations = _unique_faces(observations, people)
+        self.pending_faces = {k: v for k, v in self.pending_faces.items()
+                              if 0 <= video_time - v['last'] <= 10.0}
+        self.body_faces = {k: v for k, v in self.body_faces.items()
+                           if 0 <= video_time - v['last'] <= 2.5}
+        body_options = [_face_bodies(item['bbox'], people) for item in observations]
+        bodies = [next(iter(options)) if len(options) == 1 else None for options in body_options]
+        # Multiple distinct faces inside one body box are ambiguous; do not let
+        # proposal order decide which person owns that track.
+        body_counts = {body: bodies.count(body) for body in set(bodies) if body is not None}
+        bodies = [body if body_counts.get(body) == 1 else None for body in bodies]
+        current_tracks = {p['track_id'] for p in (people or [])
+                          if p.get('class_id', 0) == 0 and p.get('track_id') is not None}
+        owners = {}
+        for track, binding in self.body_faces.items():
+            owners.setdefault(binding['id'], set()).add(track)
+        clear_bodies = {body for body in bodies if body is not None}
+        reserved = {state['id']: track for track, state in self.body_faces.items()
+                    if track in clear_bodies}
         assigned = set()
+        pending_used = set()
         visible = []
-        for item in observations:
+        for item, body, options in zip(observations, bodies, body_options):
             box = item['bbox']
-            cx, cy = (box[0]+box[2])/2, (box[1]+box[3])/2
-            bodies = [p for p in (people or []) if p.get('track_id') is not None
-                      and p['bbox'][0] <= cx <= p['bbox'][2]
-                      and p['bbox'][1] <= cy <= p['bbox'][1]+.45*(p['bbox'][3]-p['bbox'][1])]
-            body = bodies[0]['track_id'] if len(bodies) == 1 else None
+            # Reserve bound identities even when their face appears later in the
+            # detector output (or is turned away on this particular frame).
+            unavailable = {ident for ident, tracks in owners.items()
+                           if (tracks - {body} if body is not None
+                               else (tracks - options) & current_tracks)}
+            unavailable.update(ident for ident, track in reserved.items() if track != body)
+
             candidates = [
                 (float(np.dot(item["embedding"], row["embedding"])), ident)
                 for ident, row in self.records.items() if ident not in assigned
+                and ident not in unavailable
                 and row["embedding"].shape == item["embedding"].shape
             ]
             score, ident = max(candidates, default=(-1.0, None))
@@ -180,7 +242,9 @@ class FaceLedger:
                 # Do not teach the identity from an uncertain/profile embedding.
                 ident = binding['id']
                 score = MATCH_THRESHOLD
-                appearance_match = float(np.dot(item['embedding'], self.records[ident]['embedding'])) >= MATCH_THRESHOLD
+                feature = self.records[ident]['embedding']
+                appearance_match = (feature.shape == item['embedding'].shape
+                                    and float(np.dot(item['embedding'], feature)) >= MATCH_THRESHOLD)
             if score < MATCH_THRESHOLD:
                 # Webcam face samples arrive at least one second apart.
                 # Recover only with both appearance and spatial agreement.
@@ -200,28 +264,45 @@ class FaceLedger:
                 if nearby:
                     _, ident = max(nearby)
                     score = MATCH_THRESHOLD
+            # A pending body follows the actual track through movement/turns.
+            # Without a track, require both spatial and appearance agreement.
+            matches = []
+            for key, pending in self.pending_faces.items():
+                if key in pending_used:
+                    continue
+                prior_body = pending['body']
+                if prior_body in clear_bodies and body != prior_body:
+                    continue
+                if body is not None and prior_body is not None and body != prior_body:
+                    continue
+                if body is None and prior_body in current_tracks and prior_body not in options:
+                    continue
+                same_body = body is not None and body == prior_body
+                spatial = overlap(box, pending['bbox'])
+                if same_body or (spatial >= .3
+                                 and pending['embedding'].shape == item['embedding'].shape
+                                 and float(np.dot(pending['embedding'], item['embedding'])) >= .25):
+                    matches.append((same_body, spatial, key))
+            pending_key = max(matches)[2] if matches else None
+            if pending_key is not None:
+                pending_used.add(pending_key)
             if score < MATCH_THRESHOLD:
                 if people is not None:
-                    # A close webcam face may be visible without a full person box.
-                    # Confirm by face geometry/appearance, independently of body IDs.
-                    matches = [(overlap(box, p['bbox']), key) for key, p in self.pending_faces.items()
-                               if key not in assigned and 0 <= video_time-p['last'] <= 10.0
-                               and p['embedding'].shape == item['embedding'].shape
-                               and float(np.dot(p['embedding'], item['embedding'])) >= .25
-                               and overlap(box, p['bbox']) >= .3]
-                    _, pending_key = max(matches, default=(0, None))
                     if pending_key is None:
                         pending_key = 'pending:' + uuid.uuid4().hex
                         self.pending_faces[pending_key] = {'embedding': item['embedding'].copy(),
-                            'bbox': box, 'last': video_time, 'count': 1, 'confidence': item['confidence']}
-                        assigned.add(pending_key)
+                            'bbox': box, 'last': video_time, 'count': 1, 'confidence': item['confidence'],
+                            'body': body, 'body_last': video_time}
+                        pending_used.add(pending_key)
                         visible.append({'id': None, 'number': None, 'bbox': box,
                                         'confidence': item['confidence'], 'pending': True})
                         continue
                     pending = self.pending_faces[pending_key]
-                    assigned.add(pending_key)
-                    pending.update(last=video_time, bbox=box, count=pending['count']+1,
+                    pending.update(count=pending['count'] + int(video_time > pending['last']),
+                                   last=video_time, bbox=box,
                                    confidence=min(pending['confidence'], item['confidence']))
+                    if body is not None:
+                        pending.update(body=body, body_last=video_time)
                     required = 2 if pending['confidence'] >= .85 else 3
                     if pending['count'] < required:
                         visible.append({'id': None, 'number': None, 'bbox': box,
@@ -259,9 +340,15 @@ class FaceLedger:
                     (now(), record["seen_count"], sqlite3.Binary(averaged.tobytes()), ident),
                 )
             assigned.add(ident)
+            if pending_key is not None:
+                self.pending_faces.pop(pending_key, None)
             if body is not None:
+                # One identity has one current body owner; expired/missing tracks
+                # can later reconnect through appearance matching.
+                self.body_faces = {track: state for track, state in self.body_faces.items()
+                                   if state['id'] != ident or track == body}
                 self.body_faces[body] = {'id': ident, 'last': video_time}
-                self.pending_faces.pop(body, None)
+                owners[ident] = {body}
             visible.append({"id": ident, "number": self.records[ident]["ordinal"],
                             "bbox": item["bbox"], "confidence": item["confidence"]})
         return {"visible": visible, "total": len(self.records), "day": self.day}
@@ -274,5 +361,6 @@ def draw_faces(image, faces):
         left, top = int(x1 * width), int(y1 * height)
         right, bottom = int(x2 * width), int(y2 * height)
         cv2.rectangle(image, (left, top), (right, bottom), (164, 228, 156), 2)
-        cv2.putText(image, f"FACE {face['number']}", (left, max(18, top-5)),
+        label = 'FACE ...' if face.get('pending') else f"FACE {face['number']}"
+        cv2.putText(image, label, (left, max(18, top-5)),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.48, (164, 228, 156), 1, cv2.LINE_AA)

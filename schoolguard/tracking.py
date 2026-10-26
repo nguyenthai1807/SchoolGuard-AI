@@ -72,3 +72,31 @@ class StableIds:
             }
             d["track_id"] = ident
         return unique
+
+
+def merge_body_and_pose(body_detections, pose_detections, minimum_overlap=0.25):
+    """Keep body-detector recall and add Pose keypoints where boxes match."""
+    bodies = [dict(item) for item in body_detections if item.get("class_id", 0) == 0]
+    poses = [item for item in pose_detections if item.get("class_id", 0) == 0]
+    pairs = sorted(
+        ((overlap(body["bbox"], pose["bbox"]), body_index, pose_index)
+         for body_index, body in enumerate(bodies)
+         for pose_index, pose in enumerate(poses)),
+        reverse=True,
+    )
+    used_bodies, used_poses = set(), set()
+    for score, body_index, pose_index in pairs:
+        if score < minimum_overlap:
+            break
+        if body_index in used_bodies or pose_index in used_poses:
+            continue
+        pose = poses[pose_index]
+        if pose.get("keypoints"):
+            bodies[body_index]["keypoints"] = pose["keypoints"]
+        bodies[body_index]["pose_confidence"] = pose.get("confidence")
+        used_bodies.add(body_index)
+        used_poses.add(pose_index)
+    for pose_index, pose in enumerate(poses):
+        if pose_index not in used_poses:
+            bodies.append(dict(pose))
+    return bodies

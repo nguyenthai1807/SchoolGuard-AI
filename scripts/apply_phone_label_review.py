@@ -1,6 +1,7 @@
 """Apply the recorded visual corrections only to the exact reviewed images/labels."""
 import hashlib
 import json
+import argparse
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -8,7 +9,10 @@ DATA = ROOT/'runtime/phone-training'
 
 
 def main():
-    review=json.loads((ROOT/'docs/phone-body-test-review.json').read_text())
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--review', type=Path, default=ROOT/'docs/phone-body-test-review.json')
+    args = parser.parse_args()
+    review=json.loads(args.review.read_text(encoding='utf-8'))
     manifest=json.loads((DATA/'manifest.json').read_text())
     by_name={r['name']:r for r in manifest['items'] if r['split']=='test'}
     changes=[]

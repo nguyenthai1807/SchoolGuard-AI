@@ -17,6 +17,7 @@ TITLES = {
     "loitering": "Lưu trú lâu trong vùng",
     "fire": "Nghi có lửa — kiểm tra ngay",
     "smoke": "Nghi có khói — kiểm tra ngay",
+    "weapon": "Nghi có hung khí — kiểm tra ngay",
 }
 
 
@@ -96,7 +97,7 @@ class BehaviorEngine:
             **detection,
             "event_type": kind,
             "severity": "urgent"
-            if kind in {"suspected_fall", "prolonged_lying", "fire", "smoke"}
+            if kind in {"suspected_fall", "prolonged_lying", "fire", "smoke", "weapon"}
             else "warning",
             "zone": zone or TITLES[kind],
             "dwell": dwell,
@@ -120,7 +121,11 @@ class BehaviorEngine:
             seen.add(full)
             duration = self.sustained(full, timestamp, seconds)
             if duration is not None:
-                alerts.append(self.alert(kind, detection, duration, details, zone))
+                alerts.append(self.alert(kind, detection, duration, {
+                    **details,
+                    "onset_timestamp": self.episodes[full].start,
+                    "confirmed_timestamp": timestamp,
+                }, zone))
                 if kind == "suspected_fall":
                     self.fall_sent.add(key)
 
@@ -211,44 +216,77 @@ class BehaviorEngine:
                 moving_toward = False
                 for src, dest in ((first, second), (second, first)):
                     prior = self.previous.get(src)
-                    if prior is None or not 0 < timestamp - prior[0] <= self.max_gap:
+                    if prior is None or not 0 < timestamp - prior[0] <= self.max_gap + 1e-9:
+                        continue
+                    old_posture = posture(prior[1], self.aspect)
+                    if old_posture is None:
                         continue
                     for index in (9, 10):
                         wrist = point(people[src], index, self.aspect)
                         old = point(prior[1], index, self.aspect)
                         if wrist and old:
-                            speed = math.dist(wrist, old) / (timestamp - prior[0]) / scale
+                            # Compare articulation relative to the torso so a common
+                            # camera pan/zoom or rigid body translation is not a hit.
+                            current_posture = valid[src]
+                            relative = tuple(
+                                (wrist[i] - current_posture["center"][i]) / current_posture["length"]
+                                for i in (0, 1)
+                            )
+                            old_relative = tuple(
+                                (old[i] - old_posture["center"][i]) / old_posture["length"]
+                                for i in (0, 1)
+                            )
+                            speed = (
+                                math.dist(relative, old_relative) * current_posture["length"]
+                                / (timestamp - prior[0]) / scale
+                            )
                             if (
                                 speed > 2.0
                                 and math.dist(wrist, valid[dest]["center"]) < 1.3 * scale
                             ):
                                 moving_toward = True
                 history = self.pair_history.setdefault(pair, deque())
-                if history and timestamp - history[-1][0] > self.max_gap:
+                if history and timestamp - history[-1][0] > self.max_gap + 1e-9:
                     history.clear()
                 history.append((timestamp, moving_toward))
                 while history and timestamp - history[0][0] > 1.5:
                     history.popleft()
                 hits = sum(hit for _, hit in history)
                 # Movements are bursts, not continuously fast for every video frame.
-                # Confirm repeated evidence within a time window, with a per-pair cooldown.
-                if (
-                    moving_toward
-                    and timestamp - history[0][0] >= 0.8
+                # A dense short burst can qualify before the longer intermittent
+                # evidence window. Three distinct motion observations reject both
+                # edges of a single-frame spike; elapsed time rejects rapid jitter.
+                recent = [(t, hit) for t, hit in history if timestamp - t <= 0.5 + 1e-9]
+                recent_hits = [t for t, hit in recent if hit]
+                burst = (
+                    len(recent_hits) >= 3
+                    and recent_hits[-1] - recent_hits[0] + 1e-9 >= 0.15
+                    and len(recent_hits) / len(recent) >= 0.5
+                )
+                sustained = (
+                    timestamp - history[0][0] + 1e-9 >= 0.8
                     and hits >= 4
                     and hits / len(history) >= 0.3
+                )
+                if (
+                    moving_toward
+                    and (burst or sustained)
                     and timestamp - self.pair_alert_time.get(pair, -100) >= 10
                 ):
+                    evidence = recent if burst else history
+                    onset = next(t for t, hit in evidence if hit)
                     alerts.append(
                         self.alert(
                             "vigorous_interaction",
                             people[first],
-                            timestamp - history[0][0],
+                            timestamp - onset,
                             {
                                 "reason": "repeated_fast_wrists_near_another_person",
                                 "track_ids": [first, second],
-                                "positive_observations": hits,
-                                "window_observations": len(history),
+                                "positive_observations": sum(hit for _, hit in evidence),
+                                "window_observations": len(evidence),
+                                "onset_timestamp": onset,
+                                "confirmed_timestamp": timestamp,
                                 "not_a_violence_classification": True,
                             },
                         )
@@ -314,7 +352,11 @@ class BehaviorEngine:
                         "loitering",
                         alert,
                         alert["dwell"],
-                        {"reason": "zone_dwell", "experimental": False},
+                        {
+                            "reason": "zone_dwell", "experimental": False,
+                            "onset_timestamp": timestamp - alert["dwell"],
+                            "confirmed_timestamp": timestamp,
+                        },
                         alert["zone"] + " — lưu trú lâu",
                     )
                 )

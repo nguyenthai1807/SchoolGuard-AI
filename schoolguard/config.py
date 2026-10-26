@@ -30,3 +30,14 @@ class Settings:
     models: Path = ROOT / "models"
     start_worker: bool = True
     max_upload_bytes: int = 1024 * 1024 * 1024
+    public_base_url: str = os.environ.get("LH25_PUBLIC_BASE_URL", "")
+    email_verification_required: bool = os.environ.get("LH25_REQUIRE_VERIFIED_EMAIL", "false").lower() == "true"
+    payment_enabled: bool = os.environ.get("LH25_PAYOS_ENABLED", "false").lower() == "true"
+    manual_bank_name: str = os.environ.get("LH25_MANUAL_BANK_NAME", "").strip()
+    manual_bank_account: str = os.environ.get("LH25_MANUAL_BANK_ACCOUNT", "").strip()
+    manual_bank_recipient: str = os.environ.get("LH25_MANUAL_BANK_RECIPIENT", "").strip()
+    google_client_id: str = os.environ.get("LH25_GOOGLE_CLIENT_ID", "")
+    google_only: bool = os.environ.get("LH25_GOOGLE_ONLY", "false").lower() == "true"
+    google_admin_subjects: tuple[str, ...] = tuple(
+        s.strip() for s in os.environ.get("LH25_GOOGLE_ADMIN_SUBS", "").split(",") if s.strip()
+    )

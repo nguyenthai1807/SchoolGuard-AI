@@ -8,15 +8,19 @@ import numpy as np
 from .behavior import BehaviorEngine
 from .fire import FireEngine, filter_hazards
 from .rules import ZoneEngine
-from .tracking import StableIds
+from .tracking import StableIds, merge_body_and_pose
+from .weapons import WeaponEngine
 
 
 class LiveAnalyzer:
     def __init__(self, config, detector, fire_detector=None, clock=time.monotonic,
-                 face_ledger=None, object_detector=None):
+                 face_ledger=None, object_detector=None, body_detector=None,
+                 weapon_detector=None):
         self.config = config
         self.detector = detector
         self.object_detector = object_detector
+        self.body_detector = body_detector
+        self.weapon_detector = weapon_detector
         self.identities = StableIds()
         self.fire_detector = fire_detector
         self.face_ledger = face_ledger
@@ -29,18 +33,22 @@ class LiveAnalyzer:
         self.zones = ZoneEngine(config.zones, config.dwell_seconds, 2.5)
         self.fire = FireEngine(max_gap=2.5, smoke_dwell=4.0)
         self.last_fire = -10.0
+        self.weapon = WeaponEngine()
+        self.last_weapon = -10.0
         self.frames = 0
 
     def reset_view(self):
         """Old screen coordinates cannot be reused after rotation or mirroring."""
         self.identities.records.clear()
-        for detector in (self.detector, self.object_detector):
+        for detector in (self.detector, self.body_detector, self.object_detector):
             if hasattr(detector, "reset_tracking"):
                 detector.reset_tracking()
         self.behavior = None
         self.zones = ZoneEngine(self.config.zones, self.config.dwell_seconds, 2.5)
         self.fire = FireEngine(max_gap=2.5, smoke_dwell=4.0)
         self.last_fire = self.last_face = -10.0
+        self.weapon = WeaponEngine()
+        self.last_weapon = -10.0
         self.face_state["visible"] = []
         if self.face_ledger:
             self.face_ledger.body_faces.clear()
@@ -62,7 +70,14 @@ class LiveAnalyzer:
         self.last_stamp = stamp
         if self.behavior is None:
             self.behavior = BehaviorEngine(self.config, width / height, 2.5)
-        detections = self.detector(frame)
+        pose_or_people = self.detector(frame)
+        if self.body_detector:
+            body_and_objects = self.body_detector(frame)
+            body_people = [item for item in body_and_objects if item.get("class_id", 0) == 0]
+            other_objects = [item for item in body_and_objects if item.get("class_id", 0) != 0]
+            detections = merge_body_and_pose(body_people, pose_or_people) + other_objects
+        else:
+            detections = pose_or_people
         if self.object_detector:
             detections.extend(self.object_detector(frame))
         detections = self.identities.update(detections, stamp)
@@ -80,13 +95,19 @@ class LiveAnalyzer:
             alerts.extend(self.fire.update(hazards, stamp))
             hazards = self.fire.confirmed
             self.last_fire = stamp
+        weapons = []
+        if self.weapon_detector and stamp - self.last_weapon >= 0.2:
+            candidates = self.weapon_detector(frame, people)
+            alerts.extend(self.weapon.update(candidates, stamp))
+            weapons = self.weapon.confirmed
+            self.last_weapon = stamp
         if self.face_ledger:
             self.face_ledger.observe_people(people, stamp)
         if self.face_ledger and stamp - self.last_face >= 0.35:
             self.face_state = self.face_ledger.update(frame, stamp, people=people)
             self.last_face = stamp
         self.frames += 1
-        return {"processing_ms": round((time.perf_counter()-processing_started)*1000), "time": stamp, "detections": detections, "hazards": hazards,
+        return {"processing_ms": round((time.perf_counter()-processing_started)*1000), "time": stamp, "detections": detections, "hazards": hazards, "weapons": weapons,
                 "alerts": alerts, "people": len(people), "objects": len(detections) - len(people), "frame": frame,
                 "faces": self.face_state["visible"] if stamp == self.last_face else [],
                 "face_count_today": self.face_state["total"],

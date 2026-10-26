@@ -23,6 +23,21 @@ class TelegramNotifier:
     def configured(self):
         return bool(self.token and self.chat_id)
 
+    def send_text(self, message):
+        """Verify that this bot can actually deliver to the selected private chat."""
+        if not self.configured:
+            return False
+        try:
+            response = self.session.post(
+                f"https://api.telegram.org/bot{self.token}/sendMessage",
+                data={"chat_id": self.chat_id, "text": message}, timeout=(5, 10),
+            )
+            response.raise_for_status()
+            return response.json().get("ok") is True
+        except (requests.RequestException, ValueError):
+            log.warning("Telegram confirmation delivery failed")
+            return False
+
     def send(self, alert, evidence, source_name, timestamp):
         """Return (delivered, diagnostic); do not expose credentials in errors."""
         if not self.configured:

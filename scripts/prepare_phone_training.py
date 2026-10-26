@@ -26,12 +26,15 @@ def crop_labels(labels, crop):
 
 
 def main():
+    import os
     import torch
     import yaml
-    from ultralytics import YOLO
+    os.environ['YOLO_CONFIG_DIR'] = str(ROOT/'runtime/ultralytics')
+    from ultralytics import YOLO, settings
 
     torch.set_num_threads(4)
     cv2.setNumThreads(2)
+    settings.update({'sync': False})
     if (DATA/'manifest.json').exists():
         raise SystemExit('Existing dataset preserved; use another dataset directory for a new revision.')
     model = YOLO(str(ROOT/'models/yolo11s.pt'))
@@ -78,7 +81,10 @@ def main():
             cap.release()
             print(f'Prepared {split} scene {scene}',flush=True)
     (DATA/'data.yaml').write_text(yaml.safe_dump({'path':str(DATA),'train':'images/train','val':'images/val','test':'images/test','names':model.names}),encoding='utf-8')
-    manifest={'source_folder':'https://drive.google.com/drive/folders/11GtmyFtbIyrSj8snptr4I5S5WxOFCTMt',
+    source_info = DATA/'sources.json'
+    source_folder = (json.loads(source_info.read_text(encoding='utf-8'))['folder']
+                     if source_info.is_file() else str(DATA/'videos'))
+    manifest={'source_folder':source_folder,
               'splits':SPLITS,'teacher_sha256':hashlib.sha256((ROOT/'models/yolo11s.pt').read_bytes()).hexdigest(),'items':items}
     (DATA/'manifest.json').write_text(json.dumps(manifest,indent=2),encoding='utf-8')
     for split in ['val','test']:

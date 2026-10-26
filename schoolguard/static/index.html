@@ -3,33 +3,38 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#0a1521">
+  <meta name="theme-color" content="#071a13">
   <title>LH25 · Giám sát an toàn tại nhà</title>
+  <link rel="icon" type="image/jpeg" href="/static/brand-lh25-original.jpg">
   <link rel="stylesheet" href="/static/style.css">
-  <link rel="stylesheet" href="/static/lh25.css?v=body-detect-10">
+  <link rel="stylesheet" href="/static/lh25.css?v=demo-workbench-20261025-2">
+  <link rel="stylesheet" href="/static/lh25-green.css?v=20261025-3">
 </head>
 <body>
 <a class="skip-link" href="#content">Bỏ qua menu</a>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <section id="login" class="login">
   <div class="login-intro">
-    <div class="intro-brand"><span class="brand-mark">L<span>H</span></span><span>LH25<small>HOME SAFETY STUDIO</small></span></div>
+    <div class="intro-brand"><img class="brand-photo" src="/static/brand-lh25-original.jpg" alt="Logo LH25 do nhóm cung cấp"><span>LH25<small>Lock Home 24 + 1 / 7</small></span></div>
     <div><span class="eyebrow">LOCAL-FIRST · AI VIDEO MONITORING</span><h1>Nhìn thấy sớm.<br><em>Phản ứng kịp thời.</em></h1><p>Một không gian để kiểm tra video, quan sát webcam và xem lại cảnh báo có ảnh bằng chứng — tất cả xử lý trên máy của bạn.</p></div>
     <div class="intro-points"><span>01 / Phát hiện té ngã bằng pose</span><span>02 / Theo dõi lửa &amp; khói</span><span>03 / Cảnh báo người vượt mức</span></div>
     <small>AI chỉ hỗ trợ quan sát. Hãy xác minh bằng chứng; không thay thế thiết bị báo cháy hoặc chăm sóc y tế.</small>
   </div>
   <div class="login-card"><span class="eyebrow">CHÀO MỪNG TRỞ LẠI</span><h2>Đăng nhập LH25</h2><p>Truy cập bảng điều khiển an toàn tại nhà.</p>
-    <form id="login-form"><label>Tài khoản<input name="username" value="admin" autocomplete="username" required></label><label>Mật khẩu<input name="password" type="password" autocomplete="current-password" required></label><button type="submit">Vào bảng điều khiển <span aria-hidden="true">↗</span></button><p id="login-error" class="error" role="alert"></p></form>
-    <small>Dùng mật khẩu trong <code>.env</code>; nếu chưa đặt, xem <code>runtime/admin-password.txt</code> sau lần chạy đầu.</small>
+    <div id="google-auth-host" class="google-auth" aria-label="Đăng nhập Google"><div class="google-button-slot" aria-hidden="true"></div><p role="status">Đang chuẩn bị đăng nhập Google…</p></div>
+    <details id="legacy-login" class="legacy-login" hidden><summary>Đăng nhập bằng tài khoản cũ</summary><form id="login-form"><label>Tài khoản<input name="username" autocomplete="username" required></label><label>Mật khẩu<input name="password" type="password" autocomplete="current-password" required></label><button type="submit">Vào bảng điều khiển <span aria-hidden="true">↗</span></button><p id="login-error" class="error" role="alert"></p></form></details>
+    <a class="login-store-link" href="/store">Chưa có tài khoản? Khám phá Free &amp; Pro ↗</a>
+    <noscript>LH25 cần JavaScript để đăng nhập Google. Hãy bật JavaScript và tải lại trang.</noscript>
   </div>
 </section>
 <div id="shell" hidden>
-  <aside><a class="brand" href="#overview"><span class="brand-mark">L<span>H</span></span><span>LH25<small>HOME SAFETY STUDIO</small></span></a><div class="nav-label">KHÔNG GIAN CỦA BẠN</div>
-    <nav aria-label="Điều hướng chính"><a href="#overview" data-nav="overview">Tổng quan</a><a href="#library" data-nav="library">Phân tích video</a><a href="#camera" data-nav="camera">Webcam trực tiếp</a><a href="#jobs" data-nav="jobs">Tác vụ xử lý</a><a href="#alerts" data-nav="alerts">Cảnh báo</a><a href="#system" data-nav="system">Hệ thống</a></nav>
+  <aside><a class="brand" href="#overview"><img class="brand-photo" src="/static/brand-lh25-original.jpg" alt=""><span>LH25<small>Lock Home 24 + 1 / 7</small></span></a><div class="nav-label">KHÔNG GIAN CỦA BẠN</div>
+    <nav aria-label="Điều hướng chính"><a href="#overview" data-nav="overview">Tổng quan</a><a href="#library" data-nav="library">Phân tích video</a><a href="#camera" data-nav="camera">Webcam trực tiếp</a><a href="#jobs" data-nav="jobs">Tác vụ xử lý</a><a href="#alerts" data-nav="alerts">Cảnh báo</a><a href="#telegram" data-nav="telegram">Telegram</a><a href="#plan" data-nav="plan">Gói của tôi</a><a href="#system" data-nav="system">Hệ thống</a><a href="/admin" id="admin-link" hidden>Quản trị ↗</a></nav>
     <div class="aside-bottom"><span class="dot"></span> Xử lý tại máy của bạn<p id="identity"></p><button id="logout" class="quiet">Đăng xuất</button></div>
   </aside>
-  <main><header><div><span class="eyebrow">LH25 / HOME MONITOR</span><h1 id="page-title">Tổng quan</h1></div><span class="tag">● LOCAL · PRIVATE</span></header><div id="content" tabindex="-1"></div></main>
+  <main><header><div><span class="eyebrow">LH25 / HOME MONITOR</span><h1 id="page-title">Tổng quan</h1></div><div class="header-actions"><div class="notification-wrap"><button id="notification-bell" class="notification-bell" type="button" aria-label="Thông báo" aria-expanded="false" aria-controls="notification-panel"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><span id="notification-count" class="notification-count" hidden>0</span></button><section id="notification-panel" class="notification-panel" aria-label="Thông báo gần đây" hidden><div class="notification-heading"><strong>Thông báo</strong><button id="notification-read-all" class="notification-read-all" type="button">Đánh dấu đã đọc</button></div><div id="notification-list" class="notification-list"><p class="notification-empty">Đang tải…</p></div></section></div><a id="account-summary" class="tag account-summary" href="#plan" aria-label="Xem gói và lượt dùng">Đang tải gói…</a></div></header><div id="content" tabindex="-1"></div></main>
 </div>
-<script src="/static/app.js?v=body-detect-10" defer></script>
+<script src="/static/app.js?v=google-login-20261025-2" defer></script>
+<script src="/static/google-signin.js?v=google-login-20261025-2" defer></script>
 </body>
 </html>

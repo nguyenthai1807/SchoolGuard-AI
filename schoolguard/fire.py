@@ -110,7 +110,7 @@ class FireEngine:
         self.last_time = timestamp
         self.confirmed = []
         self.tracks = {
-            k: v for k, v in self.tracks.items() if timestamp - v["last"] <= self.max_gap
+            k: v for k, v in self.tracks.items() if timestamp - v["last"] <= self.max_gap + 1e-9
         }
         used, alerts = set(), []
         for d in sorted(detections, key=lambda d: -d["confidence"]):
@@ -137,11 +137,14 @@ class FireEngine:
             required = self.smoke_dwell if d['kind'] == 'smoke' else self.dwell
             confirmed = state['count'] >= 3 and duration + 1e-9 >= required
             if confirmed:
+                state.setdefault("confirmed_timestamp", timestamp)
                 self.confirmed.append(dict(d))
             if not state["emitted"] and confirmed:
-                state["emitted"] = True
                 if timestamp - self.last_sent_by_kind.get(d["kind"], -1000) < self.cooldown:
                     continue
+                # Suppression is not emission: a fresh persistent episode remains
+                # eligible when cooldown expires, provided evidence stays valid.
+                state["emitted"] = True
                 self.last_sent_by_kind[d["kind"]] = timestamp
                 alerts.append(
                     BehaviorEngine.alert(
@@ -150,6 +153,8 @@ class FireEngine:
                         duration,
                         {
                             "reason": "spatial_overlap_and_temporal_persistence",
+                            "onset_timestamp": state["start"],
+                            "confirmed_timestamp": state["confirmed_timestamp"],
                             "not_a_certified_fire_alarm": True,
                         },
                     )

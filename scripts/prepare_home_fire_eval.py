@@ -12,7 +12,11 @@ from scripts.prepare_event_data import download
 
 REVISION = "6aff09d7baa27425f31d1df685284c26cbffe7af"
 BASE = f"https://raw.githubusercontent.com/steffensbola/furg-fire-dataset/{REVISION}/"
-CLIPS = {"house3": "fire", "house6": "fire", "non_fire_patrolbot_onboard": "non-fire"}
+CLIPS = {
+    "house1": "fire", "house2": "fire", "house3": "fire",
+    "house4": "fire", "house5": "fire", "house6": "fire",
+    "non_fire_patrolbot_onboard": "non-fire",
+}
 
 
 def main():

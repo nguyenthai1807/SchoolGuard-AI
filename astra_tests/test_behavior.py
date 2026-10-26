@@ -122,6 +122,113 @@ def test_interaction_positive_and_once():
     assert len(alerts) == 1
     assert alerts[0]["event_type"] == "vigorous_interaction"
     assert alerts[0]["details"]["track_ids"] == [1, 2]
+    assert alerts[0]["severity"] == "warning"
+    assert alerts[0]["details"]["not_a_violence_classification"] is True
+
+
+def test_fast_motion_does_not_alert_when_interaction_screening_is_off():
+    e = engine(detect_interactions=False)
+    alerts = []
+    for n in range(30):
+        first, second = person(), person(track=2)
+        first["keypoints"][9] = [0.3 if n % 2 else 0.5, 0.4, 0.9]
+        alerts.extend(e.update([first, second], n / 10))
+    assert alerts == []
+
+
+def interaction_pair(wrist_x):
+    first, second = person(), person(track=2)
+    first["keypoints"][9] = [wrist_x, 0.4, 0.9]
+    return [first, second]
+
+
+@pytest.mark.parametrize("step", [0.1, 0.2])
+def test_short_interaction_burst_confirms_with_three_motion_observations(step):
+    e = engine(detect_interactions=True)
+    assert not e.update(interaction_pair(0.3), 0)
+    assert not e.update(interaction_pair(0.5), step)
+    assert not e.update(interaction_pair(0.3), 2 * step)
+    alerts = e.update(interaction_pair(0.5), 3 * step)
+    assert len(alerts) == 1
+    alert = alerts[0]
+    assert alert["event_type"] == "vigorous_interaction"
+    assert alert["details"]["positive_observations"] == 3
+    assert alert["details"]["onset_timestamp"] == pytest.approx(step)
+    assert alert["details"]["confirmed_timestamp"] == pytest.approx(3 * step)
+    assert alert["dwell"] == pytest.approx(2 * step)
+    assert alert["details"]["not_a_violence_classification"] is True
+
+
+def test_short_interaction_burst_at_end_of_clip_after_stationary_history():
+    e = engine(detect_interactions=True)
+    for n in range(40):
+        assert not e.update(interaction_pair(0.3), n / 10)
+    alerts = [
+        a for n, x in enumerate((0.5, 0.3, 0.5), start=40)
+        for a in e.update(interaction_pair(x), n / 10)
+    ]
+    assert len(alerts) == 1
+    assert alerts[0]["details"]["onset_timestamp"] == 4.0
+    assert alerts[0]["details"]["confirmed_timestamp"] == 4.2
+
+
+def test_single_wrist_spike_and_return_do_not_confirm_interaction():
+    e = engine(detect_interactions=True)
+    xs = [0.3] * 10 + [0.5] + [0.3] * 15
+    assert not [a for n, x in enumerate(xs) for a in e.update(interaction_pair(x), n / 10)]
+
+
+def test_three_motion_samples_in_negligible_time_do_not_confirm():
+    e = engine(detect_interactions=True)
+    assert not [
+        a for n in range(4)
+        for a in e.update(interaction_pair(0.3 if n % 2 else 0.5), n / 100)
+    ]
+
+
+@pytest.mark.parametrize("camera_motion", ["pan", "zoom"])
+def test_common_camera_motion_does_not_confirm_interaction(camera_motion):
+    e = engine(detect_interactions=True)
+    alerts = []
+    for n in range(30):
+        pair = interaction_pair(0.55)
+        scale = (0.6 if n % 2 else 1.0) if camera_motion == "zoom" else 1.0
+        shift = (0.15 if n % 2 else 0.0) if camera_motion == "pan" else 0.0
+        for d in pair:
+            d["bbox"] = [(v - 0.5) * scale + 0.5 + (shift if i % 2 == 0 else 0)
+                         for i, v in enumerate(d["bbox"])]
+            for p in d["keypoints"]:
+                if p[2] > 0:
+                    p[0], p[1] = (p[0] - 0.5) * scale + 0.5 + shift, (p[1] - 0.5) * scale + 0.5
+        alerts.extend(e.update(pair, n / 10))
+    assert alerts == []
+
+
+@pytest.mark.parametrize("interruption", ["gap", "missing_pose", "absent"])
+def test_interaction_evidence_does_not_bridge_interruption(interruption):
+    e = engine(detect_interactions=True)
+    for n in range(3):
+        assert not e.update(interaction_pair(0.3 if n % 2 else 0.5), n / 10)
+    if interruption != "gap":
+        pair = interaction_pair(0.3) if interruption == "missing_pose" else []
+        if pair:
+            pair[0]["keypoints"][5][2] = 0.1
+        assert not e.update(pair, 0.3)
+    start = 1.0 if interruption == "gap" else 0.4
+    for n in range(3):
+        assert not e.update(interaction_pair(0.3 if n % 2 else 0.5), start + n / 10)
+
+
+def test_behavior_episode_details_use_latest_onset_after_absence():
+    e = engine(crowd_threshold=2, crowd_seconds=1)
+    assert not e.update(interaction_pair(0.3), 0)
+    assert not e.update([], 0.1)
+    assert not e.update(interaction_pair(0.3), 0.2)
+    assert not e.update(interaction_pair(0.3), 0.7)
+    alert, = e.update(interaction_pair(0.3), 1.2)
+    assert alert["track_id"] == -1
+    assert alert["details"]["onset_timestamp"] == 0.2
+    assert alert["details"]["confirmed_timestamp"] == 1.2
 
 
 def test_loiter_zone_only():
@@ -130,13 +237,15 @@ def test_loiter_zone_only():
     )
     alerts = [a for n in range(20) for a in e.update([person()], n / 10)]
     assert len(alerts) == 1 and alerts[0]["event_type"] == "loitering"
+    assert alerts[0]["details"]["onset_timestamp"] == 0
+    assert alerts[0]["details"]["confirmed_timestamp"] == 1
 
 
 def test_db_migration_idempotent(client, app):
     from schoolguard.db import Database
 
     Database(app.state.db.path)
-    assert app.state.db.one("PRAGMA user_version")["user_version"] == 3
+    assert app.state.db.one("PRAGMA user_version")["user_version"] == 5
     assert app.state.db.one("SELECT name FROM sqlite_master WHERE type='table' AND name='faces'")
 
 

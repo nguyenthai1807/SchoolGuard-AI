@@ -16,9 +16,13 @@ from .detector import PersonDetector
 from .faces import FaceLedger, FaceRecognizer, draw_faces
 from .fire import FireDetector, FireEngine, draw_hazards, filter_hazards
 from .media import Reader, jpeg
+from .people import PeopleGallery
 from .rules import ZoneEngine
-from .schemas import JobRequest
+from .schemas import POSE_MODELS, JobRequest
 from .telegram import TelegramNotifier
+from .telegram_link import recipient_for
+from .tracking import StableIds, merge_body_and_pose
+from .weapons import WeaponDetector, WeaponEngine, draw_weapons
 
 log = logging.getLogger("schoolguard")
 
@@ -162,11 +166,12 @@ class Cancelled(Exception):
 
 class Worker:
     def __init__(self, db, settings, detector_factory=PersonDetector, fire_factory=FireDetector,
-                 notifier=None, face_factory=FaceRecognizer):
+                 notifier=None, face_factory=FaceRecognizer, weapon_factory=WeaponDetector):
         self.db, self.settings = db, settings
         self.detector_factory = detector_factory
         self.fire_factory = fire_factory
         self.face_factory = face_factory
+        self.weapon_factory = weapon_factory
         self.notifier = notifier or TelegramNotifier()
         self.stop = threading.Event()
         self.wake = threading.Event()
@@ -227,24 +232,41 @@ class Worker:
                 )
                 self.db.execute("UPDATE jobs SET total_frames=? WHERE id=?", (total, ident))
                 detector = self.detector_factory(self.settings, config)
+                body_detector = None
+                if config.model in POSE_MODELS and self.detector_factory is PersonDetector:
+                    body_model = ("yolov8n" if config.model.startswith("yolov8") else
+                                  "yolo26s" if config.model.startswith("yolo26") and (self.settings.models / "yolo26s.pt").is_file() else "yolo11s")
+                    body_config = config.model_copy(update={"model": body_model})
+                    body_detector = PersonDetector(self.settings, body_config, classes=[0])
                 fire_detector = self.fire_factory(self.settings) if config.detect_fire else None
+                weapon_detector = None  # Retired feature, including previously queued jobs.
                 face_ledger = (FaceLedger(self.db, self.settings.runtime, "video", ident,
                                           self.face_factory(self.settings))
                                if config.recognize_faces else None)
+                people_gallery = PeopleGallery(directory) if not config.redact else None
+                identities = StableIds()
                 last_face_time = -10.0
                 fire_engine = FireEngine(smoke_dwell=4.0)
                 fire_ms = []
+                pose_inferred_frames = 0
                 last_fire_time = -10.0
                 hazards = []
+                weapons = []
+                weapon_engine = WeaponEngine()
+                weapon_ms = []
+                last_weapon_time = -10.0
                 engine = ZoneEngine(
                     config.zones, config.dwell_seconds, max(0.5, config.stride / reader.fps * 1.5)
                 )
                 behavior = BehaviorEngine(
                     config, reader.width / reader.height, max(0.5, config.stride / reader.fps * 1.5)
                 )
-                encoder = Encoder(directory, reader.width, reader.height, reader.fps)
+                output_scale = min(1.0, 1280 / reader.width, 720 / reader.height)
+                output_size = (max(2, round(reader.width * output_scale)),
+                               max(2, round(reader.height * output_scale)))
+                encoder = Encoder(directory, *output_size, reader.fps)
                 last_write = 0
-                detections, active = [], set()
+                detections, people, active = [], [], set()
                 with (directory / "detections.jsonl").open("w", encoding="utf-8") as output:
                     for index in range(total):
                         if (
@@ -258,52 +280,83 @@ class Worker:
                         stamp = index / reader.fps
                         new_alerts = []
                         fire_sampled = False
+                        weapon_sampled = False
                         face_result = {"visible": [], "total": 0}
                         if index % config.stride == 0:
                             t = time.perf_counter()
-                            detections = detector(frame)
+                            pose_sampled = body_detector is None or index % (config.stride * 2) == 0
+                            if body_detector:
+                                body_people = body_detector(frame)
+                                pose_people = detector(frame) if pose_sampled else []
+                                pose_inferred_frames += int(pose_sampled)
+                                raw_detections = merge_body_and_pose(body_people, pose_people)
+                            else:
+                                raw_detections = detector(frame)
+                                pose_inferred_frames += int(config.model in POSE_MODELS)
+                            detections = identities.update(raw_detections, stamp)
+                            people = [d for d in detections if d.get('class_id', 0) == 0]
+                            if people_gallery:
+                                people_gallery.update(frame, people, stamp)
                             inference_ms.append((time.perf_counter() - t) * 1000)
-                            new_alerts, active = engine.update(detections, stamp)
-                            new_alerts.extend(behavior.update(detections, stamp))
+                            new_alerts, active = engine.update(people, stamp)
+                            if pose_sampled:
+                                new_alerts.extend(behavior.update(people, stamp))
                             if fire_detector and stamp - last_fire_time >= 0.5 - 1e-9:
                                 fire_start = time.perf_counter()
-                                hazards = filter_hazards(fire_detector(frame), detections)
+                                hazards = filter_hazards(fire_detector(frame), people)
                                 fire_ms.append((time.perf_counter() - fire_start) * 1000)
                                 new_alerts.extend(fire_engine.update(hazards, stamp))
                                 hazards = fire_engine.confirmed
                                 last_fire_time = stamp
                                 fire_sampled = True
+                            if weapon_detector and stamp - last_weapon_time >= 0.2 - 1e-9:
+                                weapon_start = time.perf_counter()
+                                candidates = weapon_detector(frame, people)
+                                weapon_ms.append((time.perf_counter() - weapon_start) * 1000)
+                                new_alerts.extend(weapon_engine.update(candidates, stamp))
+                                weapons = weapon_engine.confirmed
+                                last_weapon_time = stamp
+                                weapon_sampled = True
                             active.update(a["track_id"] for a in new_alerts)
-                            peak = max(peak, len(detections))
+                            peak = max(peak, len(people))
+                            if face_ledger:
+                                face_ledger.observe_people(people, stamp)
+                                if stamp - last_face_time >= 0.35 - 1e-9:
+                                    face_result = face_ledger.update(frame, stamp, people=people)
+                                    last_face_time = stamp
                             output.write(
                                 json.dumps(
                                     {
                                         "frame": index,
                                         "time": stamp,
                                         "detections": detections,
+                                        "people": len(people),
                                         "hazards": hazards if fire_sampled else [],
                                         "fire_sampled": fire_sampled,
+                                        "weapons": weapons if weapon_sampled else [],
+                                        "weapon_sampled": weapon_sampled,
                                     },
                                     ensure_ascii=False,
                                 )
                                 + "\n"
                             )
                         # Skipped frames do not display stale boxes or claim fresh detections.
-                        if face_ledger and stamp - last_face_time >= 0.5 - 1e-9:
-                            face_result = face_ledger.update(frame, stamp)
-                            last_face_time = stamp
                         shown = detections if index % config.stride == 0 else []
-                        annotated = draw(frame, shown, config.zones, active, config.redact)
+                        output_frame = (cv2.resize(frame, output_size, interpolation=cv2.INTER_AREA)
+                                        if output_scale < 1 else frame)
+                        annotated = draw(output_frame, shown, config.zones, active, config.redact)
                         if face_result["visible"]:
                             draw_faces(annotated, face_result["visible"])
                         if fire_sampled:
                             draw_hazards(annotated, hazards)
+                        if weapon_sampled:
+                            draw_weapons(annotated, weapons)
                         if config.redact and not shown and index % config.stride:
                             # Whole frame blur prevents unredacted skipped frames in exported video.
                             annotated = cv2.GaussianBlur(annotated, (51, 51), 0)
                         cv2.putText(
                             annotated,
-                            f"{stamp:.2f}s | persons {len(detections)} | {'inferred' if index % config.stride == 0 else 'skipped'}",
+                            f"{stamp:.2f}s | persons {len(people) if index % config.stride == 0 else '--'} | {'inferred' if index % config.stride == 0 else 'skipped'}",
                             (10, 23),
                             cv2.FONT_HERSHEY_SIMPLEX,
                             0.5,
@@ -335,7 +388,7 @@ class Worker:
                                 ),
                             )
                             events += 1
-                            _, delivery_status = self.notifier.send(
+                            _, delivery_status = recipient_for(self.db, job["user_id"], self.notifier).send(
                                 alert, evidence_bytes, config.camera_name, stamp
                             )
                             self.db.execute(
@@ -359,7 +412,7 @@ class Worker:
                                 (
                                     processed / total,
                                     processed,
-                                    len(detections),
+                                    len(people),
                                     events,
                                     processed / elapsed,
                                     ident,
@@ -370,6 +423,7 @@ class Worker:
                 encoder.close(True)
                 encoder = None
                 elapsed = time.perf_counter() - started
+                gallery_result = people_gallery.finish() if people_gallery else None
                 summary = {
                     "processed_frames": processed,
                     "inferred_frames": len(inference_ms),
@@ -380,6 +434,8 @@ class Worker:
                     "processed_duration": processed / reader.fps,
                     "partial_clip": processed < reader.count,
                     "peak_people": peak,
+                    "last_observed_people": len(people),
+                    "output_size": list(output_size),
                     "alerts": events,
                     "elapsed_seconds": round(elapsed, 3),
                     "processing_fps": round(processed / elapsed, 2),
@@ -389,6 +445,8 @@ class Worker:
                     "redacted": config.redact,
                     "model": config.model,
                     "checkpoint_sha256": getattr(detector, "checkpoint_sha256", None),
+                    "body_checkpoint_sha256": getattr(body_detector, "checkpoint_sha256", None),
+                    "pose_inferred_frames": pose_inferred_frames,
                     "schema_version": "2.0",
                     "event_counts": {
                         row["event_type"]: row["n"]
@@ -399,10 +457,15 @@ class Worker:
                     },
                     "behavior_rules": "lh25-home-v1-experimental",
                     "fire_checkpoint_sha256": getattr(fire_detector, "checkpoint_sha256", None),
+                    "weapon_checkpoint_sha256": getattr(weapon_detector, "checkpoint_sha256", None),
                     "fire_inferred_frames": len(fire_ms),
+                    "weapon_inferred_frames": len(weapon_ms),
                     "unique_faces": len(face_ledger.records) if face_ledger else None,
+                    "tracked_people": gallery_result["count"] if gallery_result else None,
+                    "people_gallery_truncated": gallery_result["truncated"] if gallery_result else False,
                     "preview_write_retries": preview_failures,
                     "fire_mean_ms": round(float(np.mean(fire_ms)), 2) if fire_ms else None,
+                    "weapon_mean_ms": round(float(np.mean(weapon_ms)), 2) if weapon_ms else None,
                 }
                 (directory / "summary.json").write_text(
                     json.dumps(summary, indent=2), encoding="utf-8"
