@@ -19,6 +19,7 @@ class Database:
             conn.executescript("""
                 PRAGMA journal_mode=WAL;
                 CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY, username TEXT UNIQUE NOT NULL, password TEXT NOT NULL, role TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS google_identities(subject TEXT PRIMARY KEY, user_id INTEGER UNIQUE NOT NULL REFERENCES users(id));
                 CREATE TABLE IF NOT EXISTS customer_profiles(user_id INTEGER PRIMARY KEY REFERENCES users(id), display_name TEXT NOT NULL, email TEXT NOT NULL, phone TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id), expires REAL NOT NULL);
                 CREATE TABLE IF NOT EXISTS sources(id TEXT PRIMARY KEY, name TEXT NOT NULL, path TEXT NOT NULL, kind TEXT NOT NULL, split TEXT NOT NULL);
@@ -32,6 +33,7 @@ class Database:
                 CREATE TABLE IF NOT EXISTS telegram_poll(id INTEGER PRIMARY KEY CHECK(id=1), next_offset INTEGER NOT NULL DEFAULT 0);
                 INSERT OR IGNORE INTO telegram_poll(id,next_offset) VALUES(1,0);
                 CREATE TABLE IF NOT EXISTS subscriptions(user_id INTEGER PRIMARY KEY REFERENCES users(id), plan TEXT NOT NULL, expires_at TEXT, source TEXT NOT NULL, updated_at TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS team_pro_grants(email TEXT PRIMARY KEY, created_at TEXT NOT NULL, applied_user_id INTEGER REFERENCES users(id), applied_at TEXT);
                 CREATE TABLE IF NOT EXISTS orders(id TEXT PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id), plan TEXT NOT NULL, amount_vnd INTEGER NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL, resolved_at TEXT, payment_reference TEXT NOT NULL DEFAULT '', resolved_by INTEGER REFERENCES users(id));
                 CREATE INDEX IF NOT EXISTS orders_user ON orders(user_id,created_at);
                 CREATE TABLE IF NOT EXISTS billing_notifications(id INTEGER PRIMARY KEY, order_id TEXT NOT NULL REFERENCES orders(id), channel TEXT NOT NULL CHECK(channel IN ('email','telegram')), status TEXT NOT NULL DEFAULT 'pending', attempts INTEGER NOT NULL DEFAULT 0, next_attempt REAL NOT NULL DEFAULT 0, delivered_at TEXT, last_error TEXT NOT NULL DEFAULT '', UNIQUE(order_id,channel));

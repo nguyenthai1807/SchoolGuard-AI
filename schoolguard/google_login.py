@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from .auth import hash_password, make_session
 from .commerce import valid_public_url
 from .db import now
+from .team_grants import redeem_verified_google_email
 
 
 class GoogleLogin(BaseModel):
@@ -156,6 +157,8 @@ def install_google_login(app, db, settings):
                 conn.execute('INSERT INTO email_verifications(user_id,email,verified_at) VALUES(?,?,?)', (uid, email, now()))
                 row = {'id': uid, 'username': username, 'role': 'operator'}
             conn.execute('UPDATE users SET role=? WHERE id=?', (allowed_role, row['id']))
+            if allowed_role != 'admin':
+                redeem_verified_google_email(conn, email, row['id'])
             row = dict(row)
             row['role'] = allowed_role
         token = make_session(db, row['id'])

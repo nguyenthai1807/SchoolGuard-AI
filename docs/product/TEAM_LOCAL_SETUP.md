@@ -54,6 +54,13 @@ Không chia sẻ mật khẩu Google. Với Telegram, mỗi máy nên dùng bot 
 riêng; nhiều LH25 cùng đọc một bot bằng `getUpdates` có thể tranh bản tin.
 Giữ payOS **tắt** khi chỉ kiểm thử mã để không tạo giao dịch tiền thật.
 
+Admin có thể cấp Pro miễn phí cho thành viên đã đăng nhập Google hoặc tạo quyền
+chờ trước lần đăng nhập đầu bằng `python -m scripts.grant_team_pro email@example.com`.
+Chỉ email đã được Google xác minh mới nhận quyền; lệnh không tạo đơn hàng hay
+ghi nhận thanh toán. Quyền này nằm trong database của **máy chạy lệnh**, không
+tự đồng bộ sang các bản LH25 trên máy thành viên. Nếu OAuth còn ở chế độ Testing,
+Admin phải cho phép các email thử nghiệm trong Google Cloud trước khi họ đăng nhập.
+
 ## 4. Cùng sửa mã
 
 Mỗi người tạo nhánh riêng từ `codex/lh25-team-local`, commit thay đổi,
