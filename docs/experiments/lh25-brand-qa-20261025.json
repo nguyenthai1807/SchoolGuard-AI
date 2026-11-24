@@ -1,0 +1,28 @@
+{
+  "contract": "LH25/STORE visual branding only: original user-supplied collage remains byte-for-byte unchanged, STORE lettering is a separate overlay; logo/tagline and themed bell visible on desktop and mobile; Store primary action remains accessible. Bell screenshots are unauthenticated DOM-only visual previews, not functional notification tests. Admin demo evidence is tracked separately in admin-demo-curation-2026-10-25.md.",
+  "targetViewports": ["1440x900", "390x844"],
+  "accessibility": {
+    "status": "pass",
+    "evidence": "Store keyboard Tab reaches the skip link with :focus-visible and a 2.4px solid outline. The logo link has an accessible label while its two composite image layers are decorative. At 390px the logo link is 46px high and the primary action is 48px high. Login inputs have visible labels."
+  },
+  "responsive": {
+    "status": "pass",
+    "evidence": "Rendered in Chrome CDP at 1440x900 and 390x844. Store document scrollWidth equals 390px at mobile, no horizontal overflow; the LH25 login does too. Text and controls fit in the inspected screenshots. The mobile login logo was restored after the first screenshot revealed it was hidden."
+  },
+  "contentStates": {
+    "loading": {"status": "not-applicable", "reason": "This record checks the static first viewport and brand assets, not async Store account loading."},
+    "empty": {"status": "not-applicable", "reason": "Brand/header and Store landing view have no empty data list."},
+    "error": {"status": "not-applicable", "reason": "Error flows are outside this visual brand-only contract."},
+    "partial": {"status": "not-applicable", "reason": "No partial data appears on the inspected brand/header and landing view."},
+    "success": {"status": "pass", "evidence": "Store and LH25 login loaded in Chrome at both target widths; logo naturalWidth was nonzero, titles matched routes, and screenshots showed the correct photo and tagline."},
+    "permission": {"status": "not-applicable", "reason": "Auth gating and Admin demos are verified by separate API tests and database evidence, not this visual brand record."}
+  },
+  "renderedEvidence": [
+    {"viewport": "1440x900", "artifact": "lh25-store-desktop-20261025.png", "observation": "Store composite logo and supplied photo visible; navigation, hero and action fit."},
+    {"viewport": "390x844", "artifact": "lh25-store-mobile-20261025.png", "observation": "Store logo, tagline and primary action fit; no horizontal overflow."},
+    {"viewport": "1440x900", "artifact": "lh25-login-desktop-20261025.png", "observation": "LH25 original logo and exact tagline visible on login."},
+    {"viewport": "390x844", "artifact": "lh25-login-mobile-20261025.png", "observation": "LH25 original logo restored and visible above login introduction."},
+    {"viewport": "1440x900", "artifact": "lh25-bell-preview-desktop-20261025.png", "observation": "DOM-only visual preview: navy/teal bell and amber unread badge fit desktop header; no authenticated user data loaded."},
+    {"viewport": "390x844", "artifact": "lh25-bell-preview-mobile-20261025.png", "observation": "DOM-only visual preview: bell and unread badge fit mobile header beside title; no authenticated user data loaded."}
+  ]
+}

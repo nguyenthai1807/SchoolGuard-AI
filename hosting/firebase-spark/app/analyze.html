@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#071a13">
+  <title>LH25 · Phân tích video và webcam</title>
+  <link rel="icon" type="image/jpeg" href="/static/brand-lh25-original.jpg">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/lh25.css">
+  <link rel="stylesheet" href="/static/lh25-green.css">
+  <link rel="stylesheet" href="/analyze.css">
+  <script type="module" src="/analyze.js?v=20261026-shell"></script>
+</head>
+<body>
+  <a class="skip-link" href="#analysis">Bỏ qua menu</a>
+  <aside><a class="brand" href="/"><img class="brand-photo" src="/static/brand-lh25-original.jpg" alt=""><span>LH25<small>Lock Home 24 + 1 / 7</small></span></a><div class="nav-label">KHÔNG GIAN CỦA BẠN</div>
+    <nav aria-label="Điều hướng chính"><a href="/">Tổng quan</a><a class="active" href="/analyze.html">Phân tích video</a><a href="/analyze.html">Webcam trực tiếp</a><a href="/#plan">Gói của tôi</a><a href="https://lh25-store-20261024.web.app/">LH25 STORE ↗</a></nav>
+    <div class="aside-bottom"><span class="dot"></span> AI xử lý trên thiết bị<p>Free · YOLO8 / 9 / 10</p></div>
+  </aside>
+  <main class="analyze-main"><header><div><span class="eyebrow">LH25 / HOME MONITOR</span><h1>Phân tích video &amp; webcam</h1></div><span class="tag">FREE · TRÊN THIẾT BỊ</span></header>
+    <p id="gate-status" role="status" aria-live="polite">Đang kiểm tra tài khoản Google…</p>
+    <section id="analysis" hidden>
+      <section class="controls panel" aria-label="Điều khiển phân tích"><label>Model AI<select id="model"><optgroup label="Free · phân tích người"><option value="yolov8n">YOLO8 · Person</option><option value="yolov9t">YOLO9 · Person</option><option value="yolov10n">YOLO10 · Person</option></optgroup><optgroup label="Pro Local · chưa mở trên Firebase"><option disabled>YOLO11 · Person / Pose</option><option disabled>YOLO12 · Research</option><option disabled>YOLO26 · Person / Pose</option></optgroup></select></label><button id="load" type="button">1. Tải model đã chọn</button><label>2. Chọn video<input id="file" type="file" accept="video/*" disabled></label><button id="camera" type="button" disabled>2. Mở webcam</button><button id="start" type="button" disabled>3. Phân tích</button><button id="stop" type="button" disabled>Dừng</button><label>Số người dự kiến <input id="limit" type="number" min="0" max="100" value="2"></label></section>
+      <p id="status" role="status" aria-live="polite">Chưa tải AI. Không cần cài phần mềm.</p>
+      <div class="screens"><video id="video" controls playsinline muted></video><canvas id="result" aria-label="Khung hình đã phân tích"></canvas></div>
+      <section class="panel"><h2>Kết quả khung hình gần nhất</h2><p id="count">Chưa có kết quả.</p><p id="warning" role="status"></p><p id="speed"></p></section>
+      <div class="analysis-note panel"><strong>Giới hạn bản Free trên trình duyệt</strong><p>YOLO8/9/10 ở đây chỉ đếm người trong khung hình được lấy mẫu, không đếm người duy nhất suốt video. Pose, YOLO11/12/26, nhận dạng khuôn mặt, ngã/cháy, Telegram và thanh toán chưa mở trên Firebase. Video được xử lý theo tốc độ phát; không quét bảo đảm từng frame. Chỉ chọn video tối đa 2 phút, 100 MB.</p><p>Giữ tab mở và máy hoạt động; xử lý có thể chậm hoặc bỏ sót. Không dùng kết quả thay thiết bị an toàn hay dịch vụ khẩn cấp. Video và webcam không được lưu lên LH25.</p></div>
+    </section>
+  </main>
+</body>
+</html>

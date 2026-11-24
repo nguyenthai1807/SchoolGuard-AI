@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#071a13">
+  <title>LH25 · Giám sát an toàn tại nhà</title>
+  <link rel="icon" type="image/jpeg" href="/static/brand-lh25-original.jpg">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/lh25.css">
+  <link rel="stylesheet" href="/static/lh25-green.css">
+  <link rel="stylesheet" href="/portal-shell.css">
+  <script type="module" src="/portal-free.js?v=20261026-shell"></script>
+</head>
+<body>
+<a class="skip-link" href="#content">Bỏ qua menu</a>
+<section id="login-view" class="login">
+  <div class="login-intro">
+    <div class="intro-brand"><img class="brand-photo" src="/static/brand-lh25-original.jpg" alt="Logo LH25 do nhóm cung cấp"><span>LH25<small>Lock Home 24 + 1 / 7</small></span></div>
+    <div><span class="eyebrow">LH25 · BẢN WEB THỬ NGHIỆM</span><h1>Nhìn thấy sớm.<br><em>Phản ứng kịp thời.</em></h1><p>Không gian để phân tích video và webcam tại nhà. Bản Free công khai hiện đếm người ngay trong trình duyệt của bạn; các chức năng cần máy chủ vẫn đang được chuẩn bị.</p></div>
+    <div class="intro-points"><span>01 / Video trên thiết bị</span><span>02 / Webcam trực tiếp</span><span>03 / YOLO8 · 9 · 10</span></div>
+    <small>AI có thể báo nhầm hoặc bỏ sót. LH25 không thay thiết bị báo cháy, chăm sóc y tế hay dịch vụ khẩn cấp.</small>
+  </div>
+  <div class="login-card">
+    <span class="eyebrow">CHÀO MỪNG TRỞ LẠI</span><h2>Đăng nhập LH25</h2><p>Truy cập bảng điều khiển an toàn tại nhà.</p>
+    <p id="status" role="status" aria-live="polite">Đang kiểm tra cấu hình dịch vụ…</p>
+    <section id="signed-out" hidden><p>Đăng nhập Google không tạo đơn hàng hoặc thu tiền. LH25 nhận tên, email và mã định danh Google để quản lý tài khoản Free.</p><button id="google-login" type="button">Tiếp tục với Google</button></section>
+    <section id="register" hidden><h3 id="register-title">Hoàn tất tài khoản Free</h3><p id="register-email"></p><label class="consent"><input id="accept-terms" type="checkbox"> Tôi đã đọc <a href="/terms.html" target="_blank" rel="noopener">Điều khoản thử nghiệm</a> và <a href="/privacy.html" target="_blank" rel="noopener">Thông tin dữ liệu</a>.</label><button id="complete-register" type="button" disabled>Tạo tài khoản Free</button></section>
+    <a class="login-store-link" href="https://lh25-store-20261024.web.app/">Khám phá LH25 STORE ↗</a>
+  </div>
+</section>
+<div id="dashboard" hidden>
+  <aside><a class="brand" href="#overview"><img class="brand-photo" src="/static/brand-lh25-original.jpg" alt=""><span>LH25<small>Lock Home 24 + 1 / 7</small></span></a><div class="nav-label">KHÔNG GIAN CỦA BẠN</div>
+    <nav aria-label="Điều hướng chính"><a class="active" href="#overview">Tổng quan</a><a href="/analyze.html">Phân tích video</a><a href="/analyze.html">Webcam trực tiếp</a><a href="#plan">Gói của tôi</a><a href="https://lh25-store-20261024.web.app/">LH25 STORE ↗</a></nav>
+    <div class="aside-bottom"><span class="dot"></span> AI xử lý trên thiết bị<p id="account-email"></p><button id="logout" class="quiet" type="button">Đăng xuất</button></div>
+  </aside>
+  <main id="content"><header><div><span class="eyebrow">LH25 / HOME MONITOR</span><h1>Tổng quan</h1></div><span class="tag">FREE · BẢN WEB</span></header>
+    <section id="overview" class="grid portal-metrics" aria-label="Tổng quan gói Free"><div class="metric"><span>Model khả dụng</span><strong>03</strong><small>YOLO8 · YOLO9 · YOLO10</small></div><div class="metric"><span>Phương thức</span><strong>02</strong><small>Video và webcam</small></div><div class="metric"><span>Nơi xử lý</span><strong>Máy bạn</strong><small>Không tải video lên LH25</small></div></section>
+    <section class="panel"><div class="panel-head"><div><span class="eyebrow">TÀI KHOẢN</span><h2 id="account-name">Khách LH25</h2></div><span class="tag">GOOGLE · FREE</span></div><p>Chọn model để đếm người trong video ngắn hoặc webcam. Video và khung hình chỉ được xử lý trên thiết bị này; kết quả hiện chưa được lưu lâu dài trên tài khoản.</p><a class="portal-action" href="/analyze.html">Mở phân tích video &amp; webcam ↗</a></section>
+    <section id="plan" class="panel"><span class="eyebrow">GÓI PRO</span><h2>Chưa mở thanh toán trên web</h2><p>YOLO11/12/26, cảnh báo ngã/cháy, Telegram, lưu video và trang quản trị hiện chạy ở LH25 trên máy nhóm; chúng chưa được kết nối với tài khoản Free ở website này. Không chuyển khoản theo tin nhắn hoặc ảnh chụp tự xưng LH25.</p></section>
+    <p class="help">Đây là vỏ giao diện LH25 gốc cho giai đoạn web Free. Các mục cần backend sẽ được mở khi hệ thống lưu trữ, xử lý và phân quyền đã qua kiểm thử.</p>
+  </main>
+</div>
+</body>
+</html>

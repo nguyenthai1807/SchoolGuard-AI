@@ -1,0 +1,32 @@
+{
+  "contract": "LH25 STORE: replace the fall feature's abstract pose illustration with a photorealistic, clearly labeled AI-generated image of an older adult at home; preserve other feature cards.",
+  "targetViewports": ["1440x900", "390x844"],
+  "accessibility": {
+    "status": "pass",
+    "evidence": "The image has descriptive Vietnamese alt text; the card also has a visible AI-illustration disclaimer and a legible overlaid label at both inspected widths."
+  },
+  "responsive": {
+    "status": "pass",
+    "evidence": "Chrome inspection found no horizontal overflow at 1440px (scrollWidth 1425) or 390px (scrollWidth 390); the older adult's head remains visible in both rendered crops."
+  },
+  "contentStates": {
+    "loading": {"status": "not-applicable", "reason": "This is a static image card with no loading state."},
+    "empty": {"status": "not-applicable", "reason": "This card has no empty data state."},
+    "error": {"status": "not-applicable", "reason": "This change does not introduce an error state."},
+    "partial": {"status": "not-applicable", "reason": "This card does not render partial data."},
+    "success": {"status": "pass", "evidence": "Chrome reported image naturalWidth 1672 and showed the photo, title, label and note on desktop and mobile."},
+    "permission": {"status": "not-applicable", "reason": "The public Store feature card requires no camera or account permission."}
+  },
+  "renderedEvidence": [
+    {
+      "viewport": "1440x900",
+      "artifact": "lh25-fall-feature-desktop-20261025.png",
+      "observation": "The photo replaces the stick figure, the person's head is not cropped, and the neighboring fire and people cards remain in place."
+    },
+    {
+      "viewport": "390x844",
+      "artifact": "lh25-fall-feature-mobile-20261025.png",
+      "observation": "The image fits the single-column card; the subject, illustration label, fall title and disclaimer are visible without horizontal overflow."
+    }
+  ]
+}

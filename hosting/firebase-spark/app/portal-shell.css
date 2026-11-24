@@ -1,0 +1,20 @@
+/* Small public adapter for the original LH25 shell. The shared visual rules
+   come from schoolguard/static and are copied by build_firebase_free.py. */
+.portal-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 24px; }
+.portal-metrics .metric strong { font-size: clamp(24px, 2.4vw, 36px); }
+.portal-metrics .metric small { display: block; margin-top: 8px; }
+.portal-action { display: inline-flex; align-items: center; min-height: 43px; padding: 10px 15px; border-radius: 9px; background: var(--mint); color: #0d2a1b; font-weight: 700; }
+.portal-action:hover { filter: brightness(1.08); color: #0d2a1b; }
+#login-view .login-card { align-self: center; }
+#login-view .login-card > p { line-height: 1.6; }
+#login-view #status { min-height: 22px; color: var(--mint); }
+#login-view #signed-out p, #login-view #register p { line-height: 1.6; color: var(--muted); }
+#login-view #google-login, #login-view #complete-register { width: 100%; padding: 14px; }
+#login-view .consent { display: flex; gap: 10px; align-items: flex-start; margin: 20px 0; font-size: 13px; line-height: 1.6; }
+#login-view .consent input { width: auto; margin: 4px 0 0; flex: none; }
+#login-view .login-store-link { margin-top: 24px; }
+#dashboard .panel { max-width: 950px; }
+#dashboard .panel p { line-height: 1.7; color: #cce1d1; }
+#dashboard #account-email { overflow-wrap: anywhere; }
+@media (max-width: 900px) { .portal-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 650px) { .portal-metrics { grid-template-columns: 1fr; } #login-view { grid-template-columns: 1fr; } #login-view .login-intro { gap: 24px; } }

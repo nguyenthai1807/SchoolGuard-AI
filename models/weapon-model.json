@@ -1,0 +1,13 @@
+{
+  "source_url": "https://huggingface.co/cosgun99/gun-knife-yolo11n/resolve/main/best.pt",
+  "sha256": "07241a8fc57d0f3fd29231dd72b9f452375745290b2185440de0165590997cb5",
+  "selected_classes": {
+    "0": "gun",
+    "1": "knife"
+  },
+  "model_card": "https://huggingface.co/cosgun99/gun-knife-yolo11n",
+  "model_repository_license": "MIT",
+  "runtime_license": "AGPL-3.0-or-Ultralytics-Enterprise",
+  "license_url": "https://www.ultralytics.com/license",
+  "downloaded_at": "2026-10-23T07:12:52.068354+00:00"
+}

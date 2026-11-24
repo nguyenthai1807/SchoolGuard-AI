@@ -1,0 +1,88 @@
+/* LH25 shared evergreen tone. Evidence imagery and semantic alert colors are unchanged. */
+:root {
+  --bg: #071a13;
+  --surface: #10291d;
+  --surface-raised: #183626;
+  --line: #315743;
+  --text: #edf6ed;
+  --muted: #afc9b7;
+  --mint: #a8e9b8;
+  --teal: #77d39b;
+  --amber: #edbf79;
+}
+body { background: radial-gradient(circle at 88% -5%, #205437 0, transparent 29rem), var(--bg); }
+:focus-visible { outline-color: #bcefc4; }
+a { color: #a8e9b8; }
+button {
+  background: #a8e9b8;
+  border-color: #a8e9b8;
+  color: #0d2a1b;
+}
+.quiet { color: #dcf1e0; border-color: #496d55; background: #133122; }
+.danger { background: #4b2d35; border-color: #9d5964; color: #ffe3e0; }
+input, select, textarea { background: #0b2218; border-color: #42684f; color: var(--text); }
+input::placeholder, textarea::placeholder { color: #a3bbac; }
+label { color: #cce3d1; }
+.eyebrow { color: #93dca8; }
+.tag { background: #143622; border-color: #49785a; color: #b5f0c2; }
+aside { background: #0c2017; border-color: #315743; }
+nav a { color: #b9d2c0; }
+nav a.active { background: #1a442c; border-left-color: #84d5a0; color: #c9f4d2; }
+nav a:hover { background: #1c3c2b; }
+.brand small, .intro-brand small, .nav-label, .aside-bottom { color: #a7c2ae; }
+main header { border-color: #355945; }
+.metric, .panel { background: #10291d; border-color: #315743; }
+.metric span, .help, .empty, .detail-list dt { color: #b1c9b8; }
+.notice { background: #30351f; border-left-color: #edbf79; color: #e7d7a5; }
+.source-row { border-color: #31513c; }
+.source-row.selected { background: #1c4830; }
+.canvas-wrap { border-color: #42684e; }
+progress { accent-color: #91dca8; }
+#toast { color: #e4f9e9; border-color: #609b6e; background: #225338; }
+
+.login {
+  background:
+    radial-gradient(ellipse at 8% 20%, #27694488, transparent 53%),
+    radial-gradient(ellipse at 85% 80%, #173f2966, transparent 43%),
+    #071a13;
+}
+.login-intro h1 em { color: #b2edbc; }
+.login-intro p { color: #c4d9ca; }
+.login-card {
+  background: linear-gradient(145deg, #173827, #102b1e);
+  border-color: #527a5b;
+  box-shadow: 0 24px 80px #01130b9c, inset 0 1px #c9f5d01a;
+}
+.login-card > p, .login-card .google-auth p { color: #c4d9ca; }
+.login-card h2 { color: #f1f7f0; }
+.login-store-link { color: #b7edc0; }
+.google-auth { display: grid; gap: 12px; margin: 30px 0 25px; min-height: 86px; }
+.google-button-slot { min-height: 44px; display: flex; align-items: center; }
+.login-card .google-button-slot [role="button"] { display: inline-flex; align-items: center; gap: 10px; max-width: 100%; }
+.login-card .google-button-slot [role="button"] svg { width: 19px; height: 19px; flex: none; }
+.google-button-slot.is-busy { opacity: .55; pointer-events: none; }
+.google-auth p { min-height: 21px; margin: 0; font-size: 13px; line-height: 1.6; }
+.legacy-login { border-top: 1px solid #476e52; padding-top: 16px; margin: 24px 0 16px; }
+.legacy-login summary { color: #bedfc5; cursor: pointer; font-size: 13px; }
+.legacy-login form { margin-top: 22px; }
+.legacy-login[hidden] { display: none; }
+.admin-login-page .google-auth { margin-top: 25px; }
+
+.notification-bell { border-color: #426d52; background: #163925; color: #b9ebc4; }
+.notification-bell:hover { border-color: #8ddda5; }
+.notification-panel { background: #102a1e; border-color: #3c624a; }
+.notification-item { border-color: #355841; }
+.camera-view-tools, #network-camera-fields, .manual-transfer {
+  background: #102e20;
+  border-color: #427353;
+}
+.camera-ai-panel { border-color: #427353; }
+.camera-ai-panel summary { color: #afe7bd; }
+.camera-view-tools button[aria-pressed="true"] { color: #d6ffe0; background: #246542; border-color: #75d49a; }
+.plan-upgrade { background: linear-gradient(120deg, #17462d, #193726); border-color: #639c70; }
+.demo-library { --demo-ground: #12271c; --demo-rule: #496452; --demo-paper: #e0eee2; --demo-muted: #b1cabb; --demo-amber: #b7ebbd; --demo-blue: #b4ebcb; }
+.demo-card-link:hover, .demo-card-link:focus-visible { background: #1e412d; }
+
+@media (prefers-reduced-motion: reduce) {
+  button { transition: none; }
+}

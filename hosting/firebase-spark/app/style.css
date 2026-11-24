@@ -1,0 +1,28 @@
+:root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; background: #081d18; color: #ecf7ee; }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; padding: 24px; }
+main { width: min(1060px, 100%); margin: 0 auto; padding: clamp(24px, 4vw, 48px); border: 1px solid #366d56; border-radius: 24px; background: #103026; box-shadow: 0 28px 90px #0006; }
+.eyebrow { color: #8fddb3; letter-spacing: .18em; font-size: .76rem; font-weight: 800; }
+h1 { font-size: clamp(2rem, 5vw, 3.5rem); line-height: 1.1; margin: 8px 0 24px; }
+h2 { margin-top: 0; }
+p { color: #c8ded0; line-height: 1.7; }
+a { color: #a4edc9; }
+a:focus-visible, button:focus-visible, input:focus-visible { outline: 3px solid white; outline-offset: 4px; }
+button, .store-link { display: inline-block; padding: 12px 18px; border: 1px solid #a4edc9; border-radius: 10px; background: #91e5b9; color: #082119; font: inherit; font-weight: 750; text-decoration: none; cursor: pointer; }
+button.secondary { background: transparent; color: #a4edc9; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+.topbar, .account-head { display: flex; align-items: start; justify-content: space-between; gap: 20px; }
+.topbar { margin-bottom: 30px; }
+.card { border: 1px solid #366d56; border-radius: 18px; padding: 24px; background: #163b30; margin: 18px 0; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.grid .card { margin: 0; }
+.stack { display: grid; gap: 12px; }
+.order { padding: 16px; border: 1px solid #3a6b58; border-radius: 12px; background: #0c2a20; }
+.order p { margin: 6px 0; }
+.order-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.order-actions input { flex: 1 1 240px; padding: 11px; border: 1px solid #528269; border-radius: 8px; color: white; background: #081d18; }
+.consent { display: block; margin-bottom: 18px; line-height: 1.7; }
+.consent input { margin-right: 6px; }
+[hidden] { display: none !important; }
+.foot { margin-top: 30px; font-size: .84rem; color: #aac3b4; }
+@media (max-width: 680px) { .topbar, .account-head { display: block; } .grid { grid-template-columns: 1fr; } main { padding: 20px; } }

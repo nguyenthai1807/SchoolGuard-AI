@@ -1,0 +1,71 @@
+{
+  "contract": "LH25 and LH25 STORE share a deep evergreen palette, mint primary actions, readable Vietnamese text and preserved alert semantics. STORE adapts the large-type, cinematic panel rhythm of Hallmark Ribbon without copying its assets. Existing Google users see one primary sign-in action; new users give LH25 data consent only when their account is created.",
+  "targetViewports": ["1440x900", "390x844"],
+  "renderedEvidence": [
+    {
+      "viewport": "1440x900",
+      "artifact": "store-green-desktop.jpg",
+      "observation": "STORE hero has green background, mint CTA and the group's annotated YOLO example in a cinematic monitor panel."
+    },
+    {
+      "viewport": "390x844",
+      "artifact": "store-green-mobile.jpg",
+      "observation": "STORE headline and actions reflow to one column; horizontal scroll was tested and remains at x=0."
+    },
+    {
+      "viewport": "1440x900",
+      "artifact": "lh25-green-login-desktop.jpg",
+      "observation": "LH25 login uses evergreen background and one visible Google button; the legacy password form is collapsed."
+    },
+    {
+      "viewport": "390x844",
+      "artifact": "lh25-green-login-mobile.jpg",
+      "observation": "LH25 login card and Google control remain readable at phone width."
+    },
+    {
+      "viewport": "1440x900",
+      "artifact": "lh25-green-login-fallback.jpg",
+      "observation": "In a simulated disabled-Google configuration, LH25 displays a message and the legacy-login disclosure."
+    },
+    {
+      "viewport": "1440x900",
+      "artifact": "store-green-localhost-guidance.jpg",
+      "observation": "At the unsupported 127.0.0.1 OAuth origin, STORE supplies a direct localhost sign-in link."
+    }
+  ],
+  "accessibility": {
+    "status": "pass",
+    "evidence": "Browser QA confirmed keyboard focus on the login-to-Store link shows a solid outline; the brand and STORE example have descriptive alt text; Google status is exposed with role=status."
+  },
+  "responsive": {
+    "status": "pass",
+    "evidence": "At 390px, STORE document client and scroll widths are both 390px and attempted horizontal scroll remains x=0; LH25 login also fits 390px. Desktop screenshots were inspected at 1440x900."
+  },
+  "contentStates": {
+    "loading": {
+      "status": "pass",
+      "evidence": "With Google configuration response delayed in an isolated browser test, LH25 displayed the pre-rendered 'Đang chuẩn bị đăng nhập Google…' status while keeping legacy credentials hidden."
+    },
+    "empty": {
+      "status": "not-applicable",
+      "reason": "These reviewed surfaces are the public marketing page and an unauthenticated login card, not a data collection or results view."
+    },
+    "error": {
+      "status": "pass",
+      "evidence": "An isolated browser test simulated Google configuration disabled; LH25 showed the explanation and exposed the legacy-login disclosure, as captured in lh25-green-login-fallback.jpg."
+    },
+    "partial": {
+      "status": "pass",
+      "evidence": "STORE content remained readable while Google sign-in was unavailable at 127.0.0.1 and showed a working localhost link; LH25 preserved a legacy fallback for a disabled Google configuration."
+    },
+    "success": {
+      "status": "pass",
+      "evidence": "The real GSI button rendered in isolated localhost browser sessions; 22 Store/Google backend tests passed. A synthetic event test showed the dashboard remained open after a delayed stale /api/me 401. This does not claim a real Google popup sign-in was retested."
+    },
+    "permission": {
+      "status": "pass",
+      "evidence": "An isolated test confirmed the unsupported OAuth origin shows localhost guidance. A mocked new-account 409 exposed LH25 terms only then; confirmation without checking sent no second request, and checking sent consent=true."
+    }
+  },
+  "remainingVerification": "A fresh real Google popup sign-in and completed Store purchase were not performed during this visual QA session."
+}

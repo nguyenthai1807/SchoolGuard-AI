@@ -1,0 +1,26 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Stage 1: Free accounts only. Payments, plans and media stay closed.
+    match /users/{uid} {
+      allow get: if request.auth != null && request.auth.uid == uid;
+      allow list, delete: if false;
+      allow create: if request.auth != null && request.auth.uid == uid &&
+        request.auth.token.email_verified == true &&
+        request.resource.data.keys().hasOnly(['email', 'displayName', 'acceptedTermsVersion', 'createdAt']) &&
+        request.resource.data.keys().hasAll(['email', 'displayName', 'acceptedTermsVersion', 'createdAt']) &&
+        request.resource.data.email == request.auth.token.email &&
+        request.resource.data.displayName is string &&
+        request.resource.data.displayName.size() <= 120 &&
+        request.resource.data.acceptedTermsVersion == '2026-10-26-browser' &&
+        request.resource.data.createdAt == request.time;
+      allow update: if request.auth != null && request.auth.uid == uid &&
+        request.auth.token.email_verified == true &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['acceptedTermsVersion']) &&
+        request.resource.data.acceptedTermsVersion == '2026-10-26-browser';
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

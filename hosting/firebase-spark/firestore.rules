@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    match /admins/{uid} {
+      // Bootstrap this document only with a trusted Admin SDK or Firebase Console.
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list, create, update, delete: if false;
+    }
+
+    match /users/{uid} {
+      allow get: if (signedIn() && request.auth.uid == uid) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if signedIn() && request.auth.uid == uid &&
+        request.resource.data.keys().hasOnly(['email', 'displayName', 'acceptedTermsVersion', 'createdAt']) &&
+        request.resource.data.keys().hasAll(['email', 'displayName', 'acceptedTermsVersion', 'createdAt']) &&
+        request.resource.data.email == request.auth.token.email &&
+        request.resource.data.displayName is string &&
+        request.resource.data.displayName.size() <= 120 &&
+        request.resource.data.acceptedTermsVersion == '2026-10-25' &&
+        request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    match /orders/{orderId} {
+      allow get, list: if (signedIn() && resource.data.uid == request.auth.uid) || isAdmin();
+      allow create: if signedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        request.resource.data.keys().hasOnly(['uid', 'email', 'sku', 'amount', 'status', 'createdAt']) &&
+        request.resource.data.keys().hasAll(['uid', 'email', 'sku', 'amount', 'status', 'createdAt']) &&
+        request.resource.data.uid == request.auth.uid &&
+        request.resource.data.email == request.auth.token.email &&
+        request.resource.data.sku == 'pro-30d' &&
+        request.resource.data.amount == 29000 &&
+        request.resource.data.status == 'requested' &&
+        request.resource.data.createdAt == request.time;
+      allow update: if isAdmin() &&
+        request.resource.data.uid == resource.data.uid &&
+        request.resource.data.email == resource.data.email &&
+        request.resource.data.sku == resource.data.sku &&
+        request.resource.data.amount == resource.data.amount &&
+        request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if false;
+    }
+
+    match /entitlements/{uid} {
+      allow get: if (signedIn() && request.auth.uid == uid) || isAdmin();
+      allow list: if isAdmin();
+      allow create, update: if isAdmin();
+      allow delete: if false;
+    }
+
+    match /paymentRefs/{referenceHash} {
+      // Prevent the same bank transaction reference being approved twice.
+      allow get: if isAdmin();
+      allow list, update, delete: if false;
+      allow create: if isAdmin() &&
+        request.resource.data.keys().hasOnly(['orderId', 'uid', 'createdAt']) &&
+        request.resource.data.keys().hasAll(['orderId', 'uid', 'createdAt']) &&
+        request.resource.data.orderId is string &&
+        request.resource.data.uid is string &&
+        request.resource.data.createdAt == request.time;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

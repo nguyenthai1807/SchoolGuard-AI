@@ -1,0 +1,21 @@
+{
+  "firestore": {
+    "rules": "firestore-free.rules"
+  },
+  "hosting": {
+    "site": "lh25-app-20261025",
+    "public": "app",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {"key": "X-Content-Type-Options", "value": "nosniff"},
+          {"key": "Referrer-Policy", "value": "no-referrer"},
+          {"key": "Content-Security-Policy", "value": "default-src 'none'; script-src 'self' 'wasm-unsafe-eval' https://www.gstatic.com https://apis.google.com; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; worker-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com; frame-src https://lh25-store-20261024.firebaseapp.com https://accounts.google.com; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"},
+          {"key": "X-Robots-Tag", "value": "noindex, nofollow"}
+        ]
+      }
+    ]
+  }
+}

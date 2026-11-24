@@ -1,0 +1,24 @@
+{
+  "contract": "LH25 Admin > Phân tích video: mở kết quả tác vụ đã duyệt bằng một lần bấm lên clip sao (#job/<evidence_job_id>); ưu tiên chức năng, số clip, ảnh/tên clip và quyền sử dụng, để cấu hình lại/bỏ sao là phụ. Thử Hallmark Console (graphite, hairline panels, amber/blue) trong phạm vi demo workbench, giữ điều hướng và token LH25. QA ở 390x844 và 1440x900 bằng fixture API vô hại; ảnh chụp không xác nhận độ chính xác model hoặc quyền đăng nhập thật.",
+  "targetViewports": ["390x844", "1440x900"],
+  "accessibility": {
+    "status": "pass",
+    "evidence": "Liên kết clip có accessible name nêu đúng tên video; focus hiện outline khi focus bằng bàn phím; nút phụ cao 44px; ảnh bên trong link trang trí có alt rỗng để không đọc lặp tên clip."
+  },
+  "responsive": {
+    "status": "pass",
+    "evidence": "Ở 390px, sáu nhóm xếp một cột, tên dài xuống dòng, document.scrollWidth=390 bằng viewport và nút phụ 44px. Ở 1440px, nhóm hai cột, không tràn ngang (scrollWidth=1425 do thanh cuộn)."
+  },
+  "contentStates": {
+    "loading": {"status": "pass", "evidence": "Giả lập API demo treo để quan sát: vùng nội dung vẫn có cấu trúc và hiện 'Đang tải demo…'."},
+    "empty": {"status": "pass", "evidence": "Các nhóm chưa có clip hiển thị 0/5 và lời giải thích cần xem clip gốc/bằng chứng; hung khí và xung đột có lý do riêng vì từng báo nhầm."},
+    "error": {"status": "pass", "evidence": "Giả lập API trả 503: vùng nội dung hiển thị thông báo 'Không tải được thư viện demo; thử tải lại trang.'; người dùng có thể tải lại trang."},
+    "partial": {"status": "pass", "evidence": "Fixture 3/6 nhóm có clip và 3/6 nhóm trống vẫn giữ đủ sáu tiêu đề, số đếm và trạng thái riêng; không che nhóm còn thiếu."},
+    "success": {"status": "pass", "evidence": "Clip đã duyệt có liên kết #job/<evidence_job_id>; thao tác bấm trên desktop đã điều hướng sang #job/job-fall-01, không chọn nguồn ở danh sách bên dưới."},
+    "permission": {"status": "pass", "evidence": "Trong phiên trình duyệt chưa đăng nhập, trang hiện form đăng nhập và không hiển thị thư viện Admin; API demo cũng yêu cầu quyền Admin qua kiểm thử backend."}
+  },
+  "renderedEvidence": [
+    {"viewport": "390x844", "artifact": "demo-workbench-mobile.jpg", "observation": "Ảnh chụp mobile của thư viện Admin với dữ liệu minh họa giả lập, nhóm một cột; tên và hành động không bị cắt."},
+    {"viewport": "1440x900", "artifact": "demo-workbench-desktop.jpg", "observation": "Ảnh chụp desktop với dữ liệu minh họa giả lập, hai cột và thứ bậc thị giác; hai nhóm nghi hung khí/xung đột trống có cảnh báo rõ."}
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "reviewer": "assistant visual review of full-resolution test frames on this machine",
+  "scope": "physical person boxes only; other COCO classes provisional",
+  "source": "local ShanghaiTech training/videos, one first clip per scene",
+  "items": [
+    {
+      "name": "scene07-0",
+      "image_sha256": "a87335716e815369cc5428a5e72989abfe3ce5dbdc83bcf459739398f8fa1432",
+      "proposed_labels_sha256": "8075c68c7d29e17261a04545bdee0c113386ab951a83322ef707c62dd0a1de69",
+      "remove_rows": []
+    },
+    {
+      "name": "scene07-1",
+      "image_sha256": "ec9f309fe7e49243a24139628d4da4a14215d62086b1be6939773dd4598c9aea",
+      "proposed_labels_sha256": "4735b36cecbdc3a9c5538b6c456799d3844a4edb6b02a45fc1c6ffe7d3649031",
+      "remove_rows": []
+    },
+    {
+      "name": "scene07-2",
+      "image_sha256": "99be102d5cf3de982e06ec467d6e1743cc1e6e8dd0948202194ddd446158d0e7",
+      "proposed_labels_sha256": "4e5243a11b1fdf29bcd26411684a6846efca057ae7da7e66170ca197c82e468c",
+      "remove_rows": []
+    },
+    {
+      "name": "scene09-0",
+      "image_sha256": "18710797775b5b4f43b5d1ad942696c737c6fe30c74f59e7dd75567f4e3fe0c0",
+      "proposed_labels_sha256": "ad1bc355e46b12ad564f3fc04050e1a3146ce0aff3b27474397d163c3ff819aa",
+      "remove_rows": [3, 4]
+    },
+    {
+      "name": "scene09-1",
+      "image_sha256": "766c2dab8ec39dd593b5ece35b080159fd9d54e44d65431d6e39c8dd53c1437e",
+      "proposed_labels_sha256": "2909069d1f467b9311a3dd5ddc70b327b36e4a572ef7fb34d08271eb23b57cbf",
+      "remove_rows": [2, 5]
+    },
+    {
+      "name": "scene09-2",
+      "image_sha256": "5f0416bb56cc6d1d2ca6e7d667d968382e85f0562d04544e63827b5ae47e5f43",
+      "proposed_labels_sha256": "85a9837f8133b94ad21e70122f77a5ce36e76d7ee63e832e883d9e7877380c06",
+      "remove_rows": []
+    },
+    {
+      "name": "scene12-0",
+      "image_sha256": "4cf86dfa66724d2cca400e4789dfe261e0d72233197e12643237c720167c5cb5",
+      "proposed_labels_sha256": "a85a8976565d1efa96a90860dd1c97e381435e9e14c3f7626a38938379b6cf9f",
+      "remove_rows": [8, 9]
+    },
+    {
+      "name": "scene12-1",
+      "image_sha256": "91314dce45feb72f5d4f748e5a469e070ddf9de187ac960fd0ba03428e46b355",
+      "proposed_labels_sha256": "c66a00044c6db9b975b3b893e4a14afc67d8b10cd23bb2f0380065525aa5d07b",
+      "remove_rows": []
+    },
+    {
+      "name": "scene12-2",
+      "image_sha256": "84431128b2f94dbe022c47f23d5dd6d382fc7b825e98fe2e15d83f437e7cd610",
+      "proposed_labels_sha256": "37ce3619e74d419a488973a61a486fe0222cf0a8e20b22b6eb763df889b0560c",
+      "remove_rows": []
+    }
+  ],
+  "notes": {
+    "policy": "Count visible physical people including partially occluded or edge-clipped people; omit glass reflections and repeated partial boxes of the same person. Tiny distant people and heavy overlaps remain uncertain; test metrics are provisional.",
+    "removed_original_rows": {
+      "scene09-0": [3, 4],
+      "scene09-1": [2, 5],
+      "scene12-0": [8, 9]
+    }
+  }
+}
